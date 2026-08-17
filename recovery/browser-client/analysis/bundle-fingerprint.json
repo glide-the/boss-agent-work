@@ -1,0 +1,34 @@
+{
+  "input": "components/codex-plugin/scripts/browser-client.mjs",
+  "bytes": 989621,
+  "sha256": "cf71c5bf138839ff6f6df07328a63d6897458f122ed68ee0bf496e301cc06c45",
+  "lineCount": 3256,
+  "parser": {
+    "name": "TypeScript Compiler API",
+    "version": "6.0.3",
+    "parseDiagnostics": []
+  },
+  "moduleSystem": "Node ESM with inlined CommonJS compatibility helpers",
+  "likelyBundler": {
+    "name": "esbuild",
+    "confidence": "inferred",
+    "evidence": [
+      "Object.create/Object.defineProperty helper prelude",
+      "lazy CommonJS wrapper shape",
+      "single-file minified ESM output"
+    ]
+  },
+  "sourceMaps": {
+    "markers": [],
+    "present": false
+  },
+  "counts": {
+    "imports": 71,
+    "exports": 1,
+    "topLevelDeclarations": 2566,
+    "functions": 4787,
+    "classes": 135,
+    "indexedStrings": 688,
+    "calls": 11213
+  }
+}

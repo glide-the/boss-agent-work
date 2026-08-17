@@ -55,6 +55,9 @@ rsync -a "$WORKSPACE_ROOT/dist/electron-app/" "$ELECTRON_OUTPUT/"
 install -m 755 "$HOST_SOURCE" "$PLUGIN_OUTPUT/extension-host/macos/arm64/extension-host"
 install -m 644 "$WORKSPACE_ROOT/config/marketplace.json" "$OUTPUT/.agents/plugins/marketplace.json"
 
+node "$PLUGIN_OUTPUT/scripts/patch-browser-client-site-status.mjs" "$PLUGIN_OUTPUT/scripts/browser-client.mjs"
+node "$PLUGIN_OUTPUT/scripts/patch-browser-client-site-status.mjs" --check "$PLUGIN_OUTPUT/scripts/browser-client.mjs"
+
 "$PYTHON" "$WORKSPACE_ROOT/scripts/validate_plugin.py" "$PLUGIN_OUTPUT"
 
 jq -n \

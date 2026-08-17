@@ -18,6 +18,9 @@ rg -qF "$EXPECTED_HOST" "$WORKSPACE_ROOT/components/chrome-extension/src/types/n
 rg -q 'NATIVE_HOSTS\.dev' "$WORKSPACE_ROOT/components/chrome-extension/src/background/index.ts"
 
 "$PYTHON" "$WORKSPACE_ROOT/scripts/validate_plugin.py" "$WORKSPACE_ROOT/components/codex-plugin"
+node --test "$WORKSPACE_ROOT/components/codex-plugin"/test/*.test.mjs
+node "$WORKSPACE_ROOT/components/codex-plugin/scripts/patch-browser-client-site-status.mjs" \
+  --check "$WORKSPACE_ROOT/components/codex-plugin/scripts/browser-client.mjs"
 node --test "$WORKSPACE_ROOT/components/electron-app"/test/*.test.mjs
 
 for skill in "$WORKSPACE_ROOT/components/skills"/*; do
@@ -28,6 +31,9 @@ for profile in baseline extension-dev full-reconstructed; do
   marketplace="$WORKSPACE_ROOT/dist/$profile/marketplace"
   if [[ -d "$marketplace" ]]; then
     "$PYTHON" "$WORKSPACE_ROOT/scripts/validate_plugin.py" "$marketplace/plugins/chrome-dev"
+    node "$marketplace/plugins/chrome-dev/scripts/patch-browser-client-site-status.mjs" \
+      --check "$marketplace/plugins/chrome-dev/scripts/browser-client.mjs"
+    test -f "$marketplace/plugins/chrome-dev/config/site-status.env.example"
     test -f "$marketplace/plugins/chrome-dev/chrome-extension/manifest.json"
     test -x "$marketplace/plugins/chrome-dev/extension-host/macos/arm64/extension-host"
     test -f "$WORKSPACE_ROOT/dist/$profile/electron-app/src/boss-plugin-native-host-lifecycle.mjs"

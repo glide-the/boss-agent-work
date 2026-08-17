@@ -103,7 +103,7 @@ fi
 
 ```text
 pluginId: chrome-dev@codex-chrome-automation-local
-version: 26.707.30751-standalone.3
+version: 26.707.30751-standalone.4
 ```
 
 Codex CLI 当前只负责复制插件。若正在运行的 Electron 宿主尚未接入本项目的 `onDidInstall` lifecycle，还需要执行下一步。
@@ -155,7 +155,47 @@ node "$BOSS_WORKSPACE/dist/baseline/electron-app/bin/reconcile-native-host.mjs" 
 
 `make clean` 会删除 `dist/`。Chrome 仍引用该目录时，不要清理它；如果已经清理，先重新运行 `make baseline`，再在扩展管理器中重新加载。
 
-## 二、安装前置条件
+## 二、Site Status 配置（通常不需要）
+
+Boss投递默认关闭站点状态服务检查，因此正常安装不需要配置环境变量，也不会请求 ChatGPT 的 `site_status` 接口。基础 URL 校验、站点来源授权和文件传输授权仍然生效。
+
+只有已经在本机启动兼容服务时才需要显式启用。macOS 上可以执行：
+
+```bash
+launchctl setenv BROWSER_USE_SITE_STATUS_CHECK_ENABLED true
+launchctl setenv BROWSER_USE_SITE_STATUS_BASE_URL http://127.0.0.1:8787
+```
+
+然后完全退出并重新打开 Codex/ChatGPT Desktop。服务必须实现：
+
+```http
+GET /aura/site_status?site_url=...&url_request_source=...
+```
+
+允许时返回：
+
+```json
+{"feature_status":{"agent":true}}
+```
+
+阻止时返回：
+
+```json
+{"feature_status":{"agent":false}}
+```
+
+仅允许 `127.0.0.1`、`localhost` 或 `[::1]`。服务超时、连接失败、非 2xx、无效 JSON 或缺少字段时会记录脱敏诊断并放行。不要使用 `BROWSER_USE_SECURITY_MODE=disabled-for-local-testing`，它会关闭多项无关安全检查。
+
+关闭并清理配置：
+
+```bash
+launchctl unsetenv BROWSER_USE_SITE_STATUS_CHECK_ENABLED
+launchctl unsetenv BROWSER_USE_SITE_STATUS_BASE_URL
+```
+
+完全退出并重新打开桌面应用后生效。配置样例见 `components/codex-plugin/config/site-status.env.example`。
+
+## 三、安装前置条件
 
 ### 系统
 
@@ -182,7 +222,7 @@ rustc --version
 cargo --version
 ```
 
-## 三、选择构建档位
+## 四、选择构建档位
 
 | 档位 | 命令 | Native Host | 用途 |
 | --- | --- | --- | --- |
@@ -192,7 +232,7 @@ cargo --version
 
 切换档位时，将前述 marketplace 路径中的 `baseline` 替换为 `extension-dev` 或 `full-reconstructed`。
 
-## 四、Runtime 路径无法自动识别时
+## 五、Runtime 路径无法自动识别时
 
 ### ChatGPT.app 当前布局
 
@@ -225,10 +265,10 @@ node "$BOSS_WORKSPACE/dist/baseline/electron-app/bin/reconcile-native-host.mjs" 
 如插件 cache 中存在多个版本，可使用：
 
 ```bash
---version-root "/Users/dmeck/.codex/plugins/cache/codex-chrome-automation-local/chrome-dev/26.707.30751-standalone.3"
+--version-root "/Users/dmeck/.codex/plugins/cache/codex-chrome-automation-local/chrome-dev/26.707.30751-standalone.4"
 ```
 
-## 五、分层验证
+## 六、分层验证
 
 ```bash
 CODEX_DATA_DIR="${CODEX_HOME:-/Users/dmeck/.codex}"
@@ -259,7 +299,7 @@ jq '[.entries[] | select(.nativeHostNames[]? == "com.openai.codexextension.dev")
 
 `manifest-valid` 不等于浏览器操作已经可用。最终验证应在新 node_repl 会话中加载 Boss投递 browser client，执行一次简单的标签页读取；如果返回 `Browser is not available: extension`，不要改用本地 Playwright 或 Selenium 伪装成功。
 
-## 六、更新插件
+## 七、更新插件
 
 ```bash
 cd /Users/dmeck/project/boss-agent-work/develop
@@ -277,7 +317,7 @@ node "$BOSS_WORKSPACE/dist/baseline/electron-app/bin/reconcile-native-host.mjs" 
 
 如果扩展构建物发生变化，再到 `chrome://extensions` 点击“重新加载”。Native Host 或 registry 单独变化时通常不需要重新加载扩展，连接会按重试机制重新建立。
 
-## 七、卸载与安全回滚
+## 八、卸载与安全回滚
 
 先停止可能仍在运行的 Boss投递 Host：
 
@@ -307,7 +347,7 @@ extensionIds 包含 jigmpnbdhhempldjgegphdgkochgpagi
 nativeHostNames 包含 com.openai.codexextension.dev
 ```
 
-## 八、常见故障
+## 九、常见故障
 
 ### `ready: false`
 

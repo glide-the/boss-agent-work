@@ -1,0 +1,123 @@
+{
+  "moduleCandidates": [
+    {
+      "name": "process-shim",
+      "anchor": "const processShim",
+      "confidence": "confirmed",
+      "responsibility": "Standalone Node REPL process compatibility shim.",
+      "found": true,
+      "offset": 169,
+      "line": 5
+    },
+    {
+      "name": "statsig-sdk",
+      "anchor": "[Statsig]",
+      "confidence": "confirmed",
+      "responsibility": "Inlined Statsig SDK; third-party code should remain isolated.",
+      "found": true,
+      "offset": 4566,
+      "line": 39
+    },
+    {
+      "name": "json-rpc",
+      "anchor": "No handler registered for method",
+      "confidence": "confirmed",
+      "responsibility": "JSON-RPC endpoint and transport behavior.",
+      "found": true,
+      "offset": 358737,
+      "line": 76
+    },
+    {
+      "name": "browser-api-schema",
+      "anchor": "BrowserAuthHandoffCommand",
+      "confidence": "confirmed",
+      "responsibility": "Command schemas and Browser/Tab API command table.",
+      "found": true,
+      "offset": 364449,
+      "line": 76
+    },
+    {
+      "name": "telemetry",
+      "anchor": "browser_use.command.execute",
+      "confidence": "confirmed",
+      "responsibility": "Command tracing and telemetry wrapper.",
+      "found": true,
+      "offset": 368457,
+      "line": 76
+    },
+    {
+      "name": "site-status-policy",
+      "anchor": "__BossSiteStatusPolicy",
+      "confidence": "confirmed",
+      "responsibility": "Project-specific local site_status policy adapter.",
+      "found": true,
+      "offset": 29,
+      "line": 1
+    },
+    {
+      "name": "browser-security",
+      "anchor": "ensureUrlOriginConsentAllowed",
+      "confidence": "confirmed",
+      "responsibility": "Navigation, origin, file-transfer and CDP authorization ordering.",
+      "found": true,
+      "offset": 944864,
+      "line": 3247
+    },
+    {
+      "name": "clipboard-bridge",
+      "anchor": "Browser Use clipboard bridge",
+      "confidence": "confirmed",
+      "responsibility": "Page/native clipboard bridge.",
+      "found": true,
+      "offset": 947330,
+      "line": 3247
+    },
+    {
+      "name": "runtime-bridge",
+      "anchor": "browser_use_invocation_started",
+      "confidence": "confirmed",
+      "responsibility": "setupBrowserRuntime bootstrap and Node REPL bridge.",
+      "found": true,
+      "offset": 987153,
+      "line": 3255
+    },
+    {
+      "name": "public-entry",
+      "anchor": "setupBrowserRuntime",
+      "confidence": "confirmed",
+      "responsibility": "Single public ESM export.",
+      "found": true,
+      "offset": 982632,
+      "line": 3253
+    }
+  ],
+  "thirdPartyEvidence": [
+    {
+      "packageName": "punycode",
+      "anchor": "2.3.1",
+      "found": true,
+      "confidence": "confirmed",
+      "evidence": "Version literal adjacent to punycode implementation.",
+      "offset": 4279,
+      "line": 39
+    },
+    {
+      "packageName": "Statsig JavaScript SDK",
+      "anchor": "3.32.6",
+      "found": true,
+      "confidence": "confirmed",
+      "evidence": "SDK_VERSION literal and Statsig log prefix.",
+      "offset": 11433,
+      "line": 39
+    },
+    {
+      "packageName": "Zod",
+      "anchor": "ZodError",
+      "found": true,
+      "confidence": "confirmed",
+      "evidence": "Runtime schema classes and error names.",
+      "offset": 223395,
+      "line": 63
+    }
+  ]
+}

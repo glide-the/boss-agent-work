@@ -32,7 +32,7 @@ test("manual installer dry-run plan validates an isolated installed plugin and R
   const resourcesPath = path.join(root, "resources");
   const versionRoot = path.join(
     codexHome,
-    "plugins/cache/codex-chrome-automation-local/chrome-dev/26.707.30751-standalone.3",
+    "plugins/cache/codex-chrome-automation-local/chrome-dev/26.707.30751-standalone.4",
   );
   const files = [
     path.join(versionRoot, ".codex-plugin", "plugin.json"),

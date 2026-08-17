@@ -3,6 +3,18 @@
 - If communication with the Boss投递 Chrome extension ultimately fails, even after checks, do not attempt to complete the user's request using AppleScript, shell commands, or another hidden browser-control path.
 - Do not overwrite another native host registration. If setup appears broken, reinstall only `chrome-dev` from `codex-chrome-automation-local`.
 
+## Site Status Policy
+
+Boss投递的 `site_status` 检查默认关闭。遇到 `Browser Use rejected this action ... is not permitted` 时，先确认当前插件版本以及桌面应用继承的环境变量；不要通过 `BROWSER_USE_SECURITY_MODE=disabled-for-local-testing` 关闭全部浏览器安全机制。
+
+- 未设置或设置 `BROWSER_USE_SITE_STATUS_CHECK_ENABLED=false`：不调用任何 `site_status` 服务。
+- 只有显式设置为 `true` 时启用；服务基址由 `BROWSER_USE_SITE_STATUS_BASE_URL` 指定，默认是 `http://127.0.0.1:8787`。
+- 服务地址只能使用 `127.0.0.1`、`localhost` 或 `[::1]`，不会回退到 ChatGPT。
+- 服务超时、连接失败、非 2xx、无效 JSON 或缺少 `feature_status.agent` 时 fail-open。
+- `feature_status.agent=false` 时仍返回原有阻止错误；后续 origin 和文件授权仍独立执行。
+
+修改环境变量后必须完全退出并重新打开 Codex/ChatGPT Desktop。配置样例位于 `config/site-status.env.example`。
+
 ## Chrome Extension Checks
 On the first Chrome-backed browser task in a session, try a lightweight browser-client call such as listing open tabs after bootstrap. If the call fails, wait 2 seconds and retry the same lightweight browser-client call once. Any non-error response means the extension is installed and working.
 

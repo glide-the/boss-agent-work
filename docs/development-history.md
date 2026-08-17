@@ -98,7 +98,7 @@ develop/
 | 产品显示名 | `Boss投递` |
 | Marketplace | `codex-chrome-automation-local` |
 | Codex 插件 | `chrome-dev` |
-| 插件版本 | `26.707.30751-standalone.3` |
+| 插件版本 | `26.707.30751-standalone.4` |
 | Chrome 扩展 ID | `jigmpnbdhhempldjgegphdgkochgpagi` |
 | Native Host | `com.openai.codexextension.dev` |
 

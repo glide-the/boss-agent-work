@@ -48,6 +48,8 @@ const marketplace = existsSync(marketplaceManifestPath)
 const extensionConfig = readJson(path.join(scriptDirectory, "extension-id.json"));
 const extensionManifest = readJson(path.join(pluginRoot, "chrome-extension", "manifest.json"));
 const installSource = readFileSync(path.join(scriptDirectory, "installManifest.mjs"), "utf8");
+const browserClientSource = readFileSync(path.join(scriptDirectory, "browser-client.mjs"), "utf8");
+const siteStatusPolicySource = readFileSync(path.join(scriptDirectory, "site-status-policy.mjs"), "utf8");
 const backgroundSource = readFileSync(path.join(pluginRoot, "chrome-extension", "background.js"), "utf8");
 
 expectEqual("plugin manifest name", pluginManifest.name, identity.pluginName);
@@ -76,10 +78,28 @@ for (const hostName of identity.extensionHostNames) {
 expectExcludes("installer extension isolation", installSource, "hehggadaopoacecdllhhajmbjkdcmajg");
 expectExcludes("extension ID isolation", backgroundSource, "hehggadaopoacecdllhhajmbjkdcmajg");
 
+expectIncludes("site status policy import", browserClientSource, 'from "./site-status-policy.mjs"');
+expectIncludes("site status default local base", browserClientSource, 'var s6="http://127.0.0.1:8787",a6="agent";');
+expectExcludes("remote site status base", browserClientSource, 'var s6="https://chatgpt.com/backend-api",a6="agent";');
+expectIncludes("site status default-off switch", siteStatusPolicySource, "BROWSER_USE_SITE_STATUS_CHECK_ENABLED");
+expectIncludes("site status local base switch", siteStatusPolicySource, "BROWSER_USE_SITE_STATUS_BASE_URL");
+expectIncludes("origin authorization remains", browserClientSource, "ensureUrlOriginConsentAllowed");
+expectIncludes("file authorization remains", browserClientSource, "ensureCurrentTabFileTransferAllowed");
+
 const installerHostNames = installSource.match(/com\.openai\.codexextension(?:\.dev|\.internal)?/g) ?? [];
 const extensionHostNames = backgroundSource.match(/com\.openai\.codexextension(?:\.dev|\.internal)?/g) ?? [];
-for (const hostName of new Set([...installerHostNames, ...extensionHostNames])) {
-  if (hostName !== identity.extensionHostName) failures.push(`unexpected native host name: ${hostName}`);
+for (const hostName of new Set(installerHostNames)) {
+  if (hostName !== identity.extensionHostName) failures.push(`unexpected installer native host name: ${hostName}`);
+}
+const extensionHasChannelMap =
+  extensionHostNames.includes("com.openai.codexextension") &&
+  extensionHostNames.includes("com.openai.codexextension.internal") &&
+  backgroundSource.includes(`dev:\`${identity.extensionHostName}\``) &&
+  backgroundSource.includes(".dev,{onStatusChange:");
+for (const hostName of new Set(extensionHostNames)) {
+  if (hostName !== identity.extensionHostName && !extensionHasChannelMap) {
+    failures.push(`unexpected active extension native host name: ${hostName}`);
+  }
 }
 
 const currentBinary = path.join(
