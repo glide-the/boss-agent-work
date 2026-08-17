@@ -2,6 +2,59 @@
 
 Boss投递是一个配合 Codex 使用的 Chrome 插件，可以在你当前登录的 BOSS 直聘页面中读取岗位、筛选职位、整理沟通内容并跟进求职进度。
 
+## 必需：先下载任务仓库
+
+Boss投递负责控制 Chrome；实际的 Prompt 任务、辅助脚本、配置和任务数据位于独立仓库 [boss-agent-run-job](https://github.com/glide-the/boss-agent-run-job)。运行任务前，必须先把它下载到固定路径：
+
+```bash
+mkdir -p /Users/dmeck/project
+git clone git@github.com:glide-the/boss-agent-run-job.git \
+  /Users/dmeck/project/boss-agent
+
+cd /Users/dmeck/project/boss-agent
+bun install
+```
+
+如果该目录已经存在，不要重复克隆。确认没有未提交修改后更新：
+
+```bash
+git -C /Users/dmeck/project/boss-agent status --short
+git -C /Users/dmeck/project/boss-agent pull --ff-only
+cd /Users/dmeck/project/boss-agent
+bun install
+```
+
+之后在 Codex 中打开 `/Users/dmeck/project/boss-agent` 作为任务工作目录。三个 Prompt 会读取这个项目中的脚本、配置、进度文件和简历上下文。
+
+## 运行 Prompt 任务
+
+任务包位于 `/Users/dmeck/project/boss-agent/docs/`。每个文件都是外层 ZIP，里面还有一个 `Part-1.zip`，真正的 Prompt 是内层 Markdown；让 Codex 完整解压并读取，不要只看 ZIP 文件名。
+
+推荐按以下顺序执行：
+
+| 顺序 | Prompt 任务 | 文件 |
+| --- | --- | --- |
+| 1 | 简历投递批量处理 | `docs/9cd6133d-45d1-4184-9981-bacce2685449_ExportBlock-c242f613-5ade-46be-add3-3777d639d352.zip` |
+| 2 | 与 BOSS 沟通获得面试机会 | `docs/56352147-341a-4d7d-97d1-a56e69e93f9b_ExportBlock-ac15ed3a-0e59-466f-8e8d-b532cff91020.zip` |
+| 3 | 沟通进度数据摘要收集到飞书 | `docs/0bdbbc7c-30c4-4794-8fbc-49075ee96088_ExportBlock-d2fe6b20-1623-40bf-9bcb-263dd0f4ad19.zip` |
+
+在 Codex 中新建任务，使用下面的启动 Prompt，并替换任务包路径：
+
+```text
+工作目录使用 /Users/dmeck/project/boss-agent。
+
+读取指定的 Prompt 任务包：
+/Users/dmeck/project/boss-agent/docs/<任务包文件名>.zip
+
+这个外层 ZIP 中包含 Part-1.zip。请继续读取内层 ZIP 中的 Markdown，完整理解其中的目标、工具约束、每轮规划协议、进度记录和停止条件。
+
+先向我汇总本任务将进行的浏览器操作、消息发送、简历投递、日历或飞书写入等外部动作。得到我的确认后，再严格使用 Boss投递（@chrome-dev）执行；如果 Boss投递未连接，立即停止，不得改用 Playwright、agent-browser 或其他浏览器工具。
+```
+
+这些 Prompt 会产生真实的岗位沟通、简历投递、日历或飞书数据写入。首次运行建议先检查任务正文和当前登录账号，再明确允许执行的动作与数量。
+
+> `boss-agent-run-job` 中也包含 Bun/agent-browser 轨迹脚本，但它们不是这三个 Prompt 任务的浏览器替代入口。三个任务已经明确要求使用 Boss投递 `@chrome-dev`；连接失败时必须停止。
+
 ## 使用前准备
 
 1. 按照 [安装说明](docs/manual-install.md) 完成 Boss投递安装。
