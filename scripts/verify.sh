@@ -31,11 +31,14 @@ for profile in baseline extension-dev full-reconstructed; do
     test -f "$marketplace/plugins/chrome-dev/chrome-extension/manifest.json"
     test -x "$marketplace/plugins/chrome-dev/extension-host/macos/arm64/extension-host"
     test -f "$WORKSPACE_ROOT/dist/$profile/electron-app/src/boss-plugin-native-host-lifecycle.mjs"
+    test -x "$WORKSPACE_ROOT/dist/$profile/electron-app/bin/reconcile-native-host.mjs"
     built_id="$(node "$WORKSPACE_ROOT/scripts/extension-id.mjs" "$marketplace/plugins/chrome-dev/chrome-extension/manifest.json")"
     [[ "$built_id" == "$EXPECTED_ID" ]]
   fi
 done
 
 test -f "$WORKSPACE_ROOT/dist/electron-app/src/boss-plugin-native-host-lifecycle.mjs"
+test -x "$WORKSPACE_ROOT/dist/electron-app/bin/reconcile-native-host.mjs"
+node "$WORKSPACE_ROOT/dist/electron-app/bin/reconcile-native-host.mjs" --help >/dev/null
 
 echo "Verification passed: extension ID=$EXPECTED_ID native host=$EXPECTED_HOST"

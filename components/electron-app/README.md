@@ -22,3 +22,12 @@ const lifecycle = registerBossPluginNativeHostLifecycle({
 ```
 
 `pluginInstaller` 只需要实现 `onDidInstall(listener)`；安装事件应提供 `marketplaceName`、`pluginName`，最好同时提供 `versionRoot`。Electron `ready` 后组件也会扫描当前安装并 reconcile，因此旧版本升级或遗漏事件可以自愈。
+
+宿主尚未接入生命周期时，可以手动执行同一套逻辑：
+
+```bash
+node bin/reconcile-native-host.mjs --dry-run --json
+node bin/reconcile-native-host.mjs --json
+```
+
+完整环境安装说明见 [manual-install.md](../../docs/manual-install.md)。

@@ -45,6 +45,8 @@ make electron
 
 Electron Main 在 Boss投递插件安装完成后同步 `latest`、Native Messaging manifest、Host config 和 schema-v2 Runtime registry；应用启动后会再次幂等 reconcile。生产接入方式与交互时序见 [docs/native-host-install-lifecycle.md](docs/native-host-install-lifecycle.md)。
 
+首次配置本机环境、加载 Chrome 扩展和执行 Native Host reconcile，请按 [docs/manual-install.md](docs/manual-install.md) 操作。
+
 构建档位及风险边界见 [BUILD-MATRIX.md](BUILD-MATRIX.md)。
 
 ## 核心身份
