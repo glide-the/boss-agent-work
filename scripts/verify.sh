@@ -18,6 +18,7 @@ rg -qF "$EXPECTED_HOST" "$WORKSPACE_ROOT/components/chrome-extension/src/types/n
 rg -q 'NATIVE_HOSTS\.dev' "$WORKSPACE_ROOT/components/chrome-extension/src/background/index.ts"
 
 "$PYTHON" "$WORKSPACE_ROOT/scripts/validate_plugin.py" "$WORKSPACE_ROOT/components/codex-plugin"
+node --test "$WORKSPACE_ROOT/components/electron-app"/test/*.test.mjs
 
 for skill in "$WORKSPACE_ROOT/components/skills"/*; do
   "$PYTHON" "$WORKSPACE_ROOT/scripts/quick_validate_skill.py" "$skill"
@@ -29,9 +30,12 @@ for profile in baseline extension-dev full-reconstructed; do
     "$PYTHON" "$WORKSPACE_ROOT/scripts/validate_plugin.py" "$marketplace/plugins/chrome-dev"
     test -f "$marketplace/plugins/chrome-dev/chrome-extension/manifest.json"
     test -x "$marketplace/plugins/chrome-dev/extension-host/macos/arm64/extension-host"
+    test -f "$WORKSPACE_ROOT/dist/$profile/electron-app/src/boss-plugin-native-host-lifecycle.mjs"
     built_id="$(node "$WORKSPACE_ROOT/scripts/extension-id.mjs" "$marketplace/plugins/chrome-dev/chrome-extension/manifest.json")"
     [[ "$built_id" == "$EXPECTED_ID" ]]
   fi
 done
+
+test -f "$WORKSPACE_ROOT/dist/electron-app/src/boss-plugin-native-host-lifecycle.mjs"
 
 echo "Verification passed: extension ID=$EXPECTED_ID native host=$EXPECTED_HOST"

@@ -1,11 +1,12 @@
 SHELL := /bin/bash
 
-.PHONY: help setup extension native baseline extension-dev full-reconstructed all verify package clean
+.PHONY: help setup extension electron native baseline extension-dev full-reconstructed all verify package clean
 
 help:
 	@echo "Boss投递开发工作区"
 	@echo "  make setup              初始化隔离的 Python 验证环境"
 	@echo "  make extension          构建 TypeScript/React Chrome 扩展"
+	@echo "  make electron           测试并组装 Electron Main 安装生命周期"
 	@echo "  make native             构建 Rust 语义重建 Native Host"
 	@echo "  make baseline           组装当前签名基线交付"
 	@echo "  make extension-dev      源码扩展 + 当前签名 Native Host"
@@ -21,16 +22,19 @@ setup:
 extension:
 	@./scripts/build-extension.sh
 
+electron:
+	@./scripts/build-electron-app.sh
+
 native:
 	@./scripts/build-native-host.sh
 
-baseline:
+baseline: electron
 	@./scripts/assemble-marketplace.sh baseline
 
-extension-dev: extension
+extension-dev: electron extension
 	@./scripts/assemble-marketplace.sh extension-dev
 
-full-reconstructed: extension native
+full-reconstructed: electron extension native
 	@./scripts/assemble-marketplace.sh full-reconstructed
 
 all: baseline extension-dev full-reconstructed

@@ -10,8 +10,9 @@ mkdir -p "$ARTIFACTS"
 for profile in baseline extension-dev full-reconstructed; do
   source_dir="$WORKSPACE_ROOT/dist/$profile"
   test -d "$source_dir/marketplace"
+  test -d "$source_dir/electron-app"
   archive="$ARTIFACTS/boss-delivery-$profile.tar.gz"
-  tar -czf "$archive" -C "$source_dir" marketplace
+  tar -czf "$archive" -C "$source_dir" marketplace electron-app
   (cd "$ARTIFACTS" && shasum -a 256 "$(basename "$archive")" > "$(basename "$archive").sha256")
   tar -tzf "$archive" >/dev/null
   echo "Packaged: $archive"

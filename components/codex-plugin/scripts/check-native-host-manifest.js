@@ -163,16 +163,20 @@ function loadExpectedChromeExtensionConfig() {
 
 function loadExpectedHostName() {
   const config = loadExpectedChromeExtensionConfig();
+  if (
+    typeof config.extensionHostName === "string" &&
+    config.extensionHostName.trim() !== ""
+  ) {
+    return config.extensionHostName.trim();
+  }
+
   const scriptPath = resolveSiblingScriptPath("installManifest.mjs");
   if (!fs.existsSync(scriptPath)) {
-    if (typeof config.extensionHostName === "string")
-      return config.extensionHostName;
-
     throw new Error(`Could not find installManifest.mjs at ${scriptPath}.`);
   }
 
   const scriptSource = fs.readFileSync(scriptPath, "utf8");
-  const match = scriptSource.match(/extensionHostName:"([^"]+)"/);
+  const match = scriptSource.match(/extensionHostName\s*:\s*["']([^"']+)["']/);
   if (!match || !match[1])
     throw new Error(`Could not read extensionHostName from ${scriptPath}.`);
 

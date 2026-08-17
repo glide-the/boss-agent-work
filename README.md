@@ -8,6 +8,7 @@
 develop/
 ├── components/
 │   ├── chrome-extension/    TypeScript + React 扩展源码
+│   ├── electron-app/        Electron Main 插件安装与启动 reconcile
 │   ├── native-host/         Rust Native Host 语义重建源码
 │   ├── codex-plugin/        Codex 插件模板，不含编译产物
 │   └── skills/              Boss 与 Chrome 调试技能源码
@@ -35,6 +36,14 @@ make package
 ```bash
 make extension-dev
 ```
+
+只验证 Electron 应用的 Native Host 默认初始化逻辑时使用：
+
+```bash
+make electron
+```
+
+Electron Main 在 Boss投递插件安装完成后同步 `latest`、Native Messaging manifest、Host config 和 schema-v2 Runtime registry；应用启动后会再次幂等 reconcile。生产接入方式与交互时序见 [docs/native-host-install-lifecycle.md](docs/native-host-install-lifecycle.md)。
 
 构建档位及风险边界见 [BUILD-MATRIX.md](BUILD-MATRIX.md)。
 

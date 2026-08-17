@@ -10,6 +10,7 @@ PROFILE="$1"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 OUTPUT="$WORKSPACE_ROOT/dist/$PROFILE/marketplace"
+ELECTRON_OUTPUT="$WORKSPACE_ROOT/dist/$PROFILE/electron-app"
 PLUGIN_OUTPUT="$OUTPUT/plugins/chrome-dev"
 PYTHON="$WORKSPACE_ROOT/.venv/bin/python"
 
@@ -38,6 +39,7 @@ esac
 
 test -f "$EXTENSION_SOURCE/manifest.json"
 test -x "$HOST_SOURCE"
+test -f "$WORKSPACE_ROOT/dist/electron-app/src/boss-plugin-native-host-lifecycle.mjs"
 
 case "$OUTPUT" in
   "$WORKSPACE_ROOT"/dist/*) ;;
@@ -45,9 +47,11 @@ case "$OUTPUT" in
 esac
 
 rm -rf "$OUTPUT"
-mkdir -p "$OUTPUT/.agents/plugins" "$PLUGIN_OUTPUT/extension-host/macos/arm64"
+rm -rf "$ELECTRON_OUTPUT"
+mkdir -p "$OUTPUT/.agents/plugins" "$PLUGIN_OUTPUT/extension-host/macos/arm64" "$ELECTRON_OUTPUT"
 rsync -a "$WORKSPACE_ROOT/components/codex-plugin/" "$PLUGIN_OUTPUT/"
 rsync -a "$EXTENSION_SOURCE/" "$PLUGIN_OUTPUT/chrome-extension/"
+rsync -a "$WORKSPACE_ROOT/dist/electron-app/" "$ELECTRON_OUTPUT/"
 install -m 755 "$HOST_SOURCE" "$PLUGIN_OUTPUT/extension-host/macos/arm64/extension-host"
 install -m 644 "$WORKSPACE_ROOT/config/marketplace.json" "$OUTPUT/.agents/plugins/marketplace.json"
 
@@ -61,3 +65,4 @@ jq -n \
   > "$OUTPUT/BUILD-PROVENANCE.json"
 
 echo "Marketplace assembled: $OUTPUT"
+echo "Electron integration assembled: $ELECTRON_OUTPUT"
