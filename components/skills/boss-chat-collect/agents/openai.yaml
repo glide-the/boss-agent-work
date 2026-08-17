@@ -1,0 +1,4 @@
+interface:
+  display_name: "BOSS Chat Collect"
+  short_description: "通过 Chrome 插件采集 BOSS 直聘聊天记录与岗位详情"
+  default_prompt: "帮我采集并整理 BOSS 直聘的聊天记录、投递反馈和岗位详情"

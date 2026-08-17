@@ -1,0 +1,38 @@
+{
+  "name": "chrome-dev",
+  "version": "26.707.30751-standalone.2",
+  "description": "Boss投递：通过独立的 Chrome 扩展与 Native Messaging Host，辅助完成 BOSS 直聘岗位浏览、筛选、投递与沟通流程。",
+  "author": {
+    "name": "Local Codex Workspace"
+  },
+  "license": "Proprietary",
+  "keywords": [
+    "browser",
+    "chrome",
+    "automation",
+    "standalone",
+    "boss",
+    "job-application"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Boss投递",
+    "shortDescription": "在 BOSS 直聘中辅助筛选岗位、投递简历与跟进沟通",
+    "longDescription": "Boss投递是一套独立的本地 Chrome 自动化插件，面向 BOSS 直聘岗位浏览、条件筛选、简历投递和招聘沟通。它拥有独立的扩展 ID、Native Messaging Host 注册和市场来源，可与官方 Chrome 集成共存，不覆盖官方注册。",
+    "developerName": "Local Codex Workspace",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read"
+    ],
+    "defaultPrompt": [
+      "使用 Boss投递检查当前 BOSS 直聘页面，并汇总可见岗位信息。",
+      "根据我的求职条件筛选 BOSS 直聘岗位，先生成候选清单，不要直接投递。",
+      "检查 Boss投递 Chrome 扩展是否已连接，并给出明确的修复步骤。"
+    ],
+    "brandColor": "#1A73E8",
+    "composerIcon": "./assets/google-chrome-composer.png",
+    "logo": "./assets/google-chrome.png",
+    "screenshots": []
+  }
+}

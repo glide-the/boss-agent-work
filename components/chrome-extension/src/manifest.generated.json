@@ -1,0 +1,43 @@
+{
+  "name": "Codex",
+  "version": "1.1.5",
+  "manifest_version": 3,
+  "description": "Control Chrome with Codex.",
+  "background_service_worker": "background.js",
+  "default_popup": "popup.html",
+  "permissions": [
+    "alarms",
+    "bookmarks",
+    "debugger",
+    "downloads",
+    "downloads.ui",
+    "favicon",
+    "history",
+    "nativeMessaging",
+    "notifications",
+    "readingList",
+    "scripting",
+    "sessions",
+    "storage",
+    "tabGroups",
+    "tabs",
+    "topSites"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_scripts": [],
+  "web_accessible_resources": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "resources": [
+        "images/cursor-chat.png"
+      ]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; connect-src 'self' http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:*; font-src 'self' https://cdn.openai.com;"
+  }
+}

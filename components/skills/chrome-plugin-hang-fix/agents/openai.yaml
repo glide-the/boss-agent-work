@@ -1,0 +1,4 @@
+interface:
+  display_name: "Chrome 插件卡顿修复"
+  short_description: "诊断并修复 Codex Chrome 插件 30 秒卡顿与命令挂起"
+  default_prompt: "用 $chrome-plugin-hang-fix 排查并修复 Chrome 插件每条命令 30 秒或命令永久挂起的问题。"

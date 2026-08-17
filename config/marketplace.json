@@ -1,0 +1,20 @@
+{
+  "name": "codex-chrome-automation-local",
+  "interface": {
+    "displayName": "Boss投递 Local"
+  },
+  "plugins": [
+    {
+      "name": "chrome-dev",
+      "source": {
+        "source": "local",
+        "path": "./plugins/chrome-dev"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

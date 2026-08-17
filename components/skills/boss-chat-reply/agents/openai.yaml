@@ -1,0 +1,4 @@
+interface:
+  display_name: "BOSS 直聘聊天回复"
+  short_description: "处理 BOSS 聊天页未读会话：读取、分句回复、简历请求同意发送"
+  default_prompt: "打开 BOSS 直聘聊天页，点击未读筛选，逐条处理未读会话：实质问题分句回复，拒绝类礼貌收尾，简历请求点同意发送最新简历"

@@ -1,0 +1,9 @@
+.DS_Store
+.venv/
+.cache/
+components/chrome-extension/node_modules/
+components/chrome-extension/dist/
+components/native-host/target/
+dist/
+artifacts/
+*.log

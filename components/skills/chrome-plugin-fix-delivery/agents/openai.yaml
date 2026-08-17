@@ -1,0 +1,4 @@
+interface:
+  display_name: "Chrome Plugin Fix Delivery"
+  short_description: "Deploy Codex Chrome plugin hang fixes"
+  default_prompt: "Use $chrome-plugin-fix-delivery to diagnose and deploy the Codex Chrome plugin fix package."

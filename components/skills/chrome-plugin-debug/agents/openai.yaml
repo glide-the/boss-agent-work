@@ -1,0 +1,4 @@
+interface:
+  display_name: "Chrome 插件调试"
+  short_description: "排查 Codex Chrome 插件与 node_repl 内核故障"
+  default_prompt: "用 $chrome-plugin-debug 排查 Chrome 插件/node_repl 内核超时、重置或连接问题。"

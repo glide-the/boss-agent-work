@@ -1,0 +1,62 @@
+{
+  "action": {
+    "default_icon": {
+      "16": "images/icon16.png",
+      "32": "images/icon32.png",
+      "48": "images/icon48.png",
+      "128": "images/icon128.png"
+    },
+    "default_popup": "popup.html",
+    "default_title": "Boss投递"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; connect-src 'self' http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:*; font-src 'self' https://cdn.openai.com;"
+  },
+  "description": "Boss投递：在 BOSS 直聘中辅助浏览岗位、筛选机会、投递简历与跟进沟通。",
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "icons": {
+    "16": "images/icon16.png",
+    "32": "images/icon32.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2ITe4kYWJZadJCBU5w9/h0mQlBdPHIBKG4sy/ijOzSYvZbxxdqngmVCnZEq4mffXcLLs0N2TXLJ3+UL7SOz+i5apEUOEuKOMfMRkaf9fOK+M06h82ysg9DWJ41VKZxAxU8KsP75tec9vSLWvA8UFQDytdrz6fSEnm+N/dPwANq+v5ZDtJkCxeE+rEpz4I7N/XEiT4Y5LCGdU/2FY++RgaZX0pMEhNumnURhyiL6QeGHMTh27KkY5KHMYokVYaAFr8BmmGAGEPUPj+FejbLbttA9rDq92gmae9TMCf5qhmPv2ktv8J/0qB19kDaeAT2cpO87vAe7qJ+ubQkad2t2wgwIDAQAB",
+  "manifest_version": 3,
+  "name": "Boss投递",
+  "permissions": [
+    "alarms",
+    "bookmarks",
+    "debugger",
+    "downloads",
+    "downloads.ui",
+    "favicon",
+    "history",
+    "nativeMessaging",
+    "notifications",
+    "readingList",
+    "scripting",
+    "sessions",
+    "storage",
+    "tabGroups",
+    "tabs",
+    "topSites"
+  ],
+  "version": "1.1.5.2",
+  "version_name": "1.1.5-boss-delivery.2-source",
+  "web_accessible_resources": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "resources": [
+        "images/cursor-chat.png"
+      ]
+    }
+  ]
+}
