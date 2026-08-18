@@ -67,7 +67,7 @@ pkill -f extension-host || true
 Use a fresh node_repl session and the Chrome plugin browser client:
 
 ```js
-var pluginRoot = "/Users/dmeck/Downloads/codex-original-dmg-codex-home/plugins/cache/openai-bundled/chrome/latest";
+var pluginRoot = "/Users/dmeck/.codex/plugins/cache/openai-bundled/chrome/latest";
 var browserClient = await import(`${pluginRoot}/scripts/browser-client.mjs`);
 await browserClient.setupBrowserRuntime({ globals: globalThis });
 var browser = await globalThis.agent.browsers.get("extension");

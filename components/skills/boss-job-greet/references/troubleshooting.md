@@ -20,7 +20,7 @@
 ## Chrome 插件目录升级
 
 - 插件缓存路径含版本号（如 `.../chrome/26.601.21317`），升级后旧路径失效，import `browser-client.mjs` 报 Module not found。
-- `browser.js` 的 `resolvePluginRoot()` 已自动回退到 `.../chrome/latest`；若仍失败，检查 `~/Downloads/codex-original-dmg-codex-home/plugins/cache/openai-bundled/chrome/` 下实际目录。
+- `browser.js` 的 `resolvePluginRoot()` 已自动回退到 `.../chrome/latest`；若仍失败，检查 `~/.codex/plugins/cache/openai-bundled/chrome/` 下实际目录。
 
 ## 列表与去重
 
