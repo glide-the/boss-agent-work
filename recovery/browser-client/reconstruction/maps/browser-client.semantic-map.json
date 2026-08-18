@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "source": "components/codex-plugin/scripts-bak/browser-client.mjs",
+  "entries": [
+    {
+      "anchor": "setupBrowserRuntime",
+      "range": { "start": 982632, "end": 982651, "line": 3253 },
+      "originalIdentifier": "ATe",
+      "reconstructedName": "setupBrowserRuntime",
+      "targetModule": "components/codex-plugin/src/browser-client/index.ts",
+      "classification": "confirmed",
+      "confidence": 1,
+      "evidence": ["ESM export table", "runtime invocation anchor"],
+      "verification": ["export snapshot", "import smoke"]
+    },
+    {
+      "anchor": "browser_use_invocation_started",
+      "range": { "start": 987153, "end": 987183, "line": 3255 },
+      "originalIdentifier": null,
+      "reconstructedName": "runtimeBridge",
+      "targetModule": "components/codex-plugin/src/browser-client/runtime",
+      "classification": "reconstructed",
+      "confidence": 0.9,
+      "evidence": ["bootstrap telemetry anchor", "globals injection data flow"],
+      "verification": ["runtime mock differential"]
+    },
+    {
+      "anchor": "ensureUrlOriginConsentAllowed",
+      "range": { "start": 944864, "end": 944893, "line": 3247 },
+      "originalIdentifier": null,
+      "reconstructedName": "browserSecurity",
+      "targetModule": "components/codex-plugin/src/browser-client/security",
+      "classification": "confirmed",
+      "confidence": 1,
+      "evidence": ["security method name", "tab.goto call ordering"],
+      "verification": ["security call graph", "behavior differential"]
+    },
+    {
+      "anchor": "No handler registered for method",
+      "range": { "start": 358737, "end": 358769, "line": 76 },
+      "originalIdentifier": null,
+      "reconstructedName": "jsonRpcTransport",
+      "targetModule": "components/codex-plugin/src/browser-client/transport",
+      "classification": "reconstructed",
+      "confidence": 0.95,
+      "evidence": ["JSON-RPC error text", "request/response object shapes"],
+      "verification": ["mock transport differential"]
+    },
+    {
+      "anchor": "Browser Use clipboard bridge",
+      "range": { "start": 947330, "end": 947358, "line": 3247 },
+      "originalIdentifier": null,
+      "reconstructedName": "clipboardBridge",
+      "targetModule": "components/codex-plugin/src/browser-client/browser/clipboard.ts",
+      "classification": "reconstructed",
+      "confidence": 0.95,
+      "evidence": ["error text", "Runtime.addBinding calls"],
+      "verification": ["CDP mock snapshot"]
+    }
+  ]
+}

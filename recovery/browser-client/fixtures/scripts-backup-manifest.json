@@ -1,0 +1,21 @@
+{
+  "path": "components/codex-plugin/scripts-bak",
+  "createdBeforeScriptsMutation": true,
+  "fileCount": 344,
+  "treeHashAlgorithm": "sha256(relative-path + NUL + file-bytes + NUL, sorted by relative path)",
+  "treeSha256": "85d1bc4f7d456ef75eceab7df6159ebfdfce23de0af51175ec9ba2dc9e579964",
+  "topLevelFiles": {
+    "browser-client.mjs": "cf71c5bf138839ff6f6df07328a63d6897458f122ed68ee0bf496e301cc06c45",
+    "check-extension-installed.js": "1b9cd79960ee1bd1c13a510e1fcc6393563c809c35e4e5be84fe7c55849fad39",
+    "check-native-host-manifest.js": "ee3d4e7e73b5f5c2fdcadc5c2c4eae0592a4adb37fb3e224dbed24bf4132fe2b",
+    "chrome-is-running.js": "d74b6d55aee23801e91ff780edee1e6f9974ba497762b8ba7989975016b92379",
+    "extension-id.json": "719f37047b83b121f07059b4e32697138058743031f337f3a5ba67d0d6fa7288",
+    "installManifest.mjs": "b735d116d82fbee45afc32de5bfeb59976a7692d0659aaa947ce5eee94ee7ded",
+    "installed-browsers.js": "67558958969267e23ee263188f5d1a41f445bf71fbf39564e9d64a1ee210b30c",
+    "open-chrome-window.js": "46cd7db447acd0fd6daf1f6f0f904217a91a51813b9c38d215fc7674d3dcca19",
+    "patch-browser-client-site-status.mjs": "c5a0a2e76de7d3e5980dc2b9b8178334729df7fd636f8aa6a9ed55e82b052783",
+    "site-status-policy.mjs": "74998781d56cd9f52c02f32848f7b85b0e882e0bd0415f7fea7987250187bc5d",
+    "standalone-identity.json": "b2024c52b8028697e478ca2c8efea6317c50ea9c0dfc423e97af25a5c7679fd4",
+    "verify-standalone.mjs": "eaa1eb28cc5452754c67c6cc5a5e527413c31167d0b4fdffc7c583c18f1d6bd9"
+  }
+}

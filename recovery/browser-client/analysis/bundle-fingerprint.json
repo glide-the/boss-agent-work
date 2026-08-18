@@ -1,5 +1,5 @@
 {
-  "input": "components/codex-plugin/scripts/browser-client.mjs",
+  "input": "components/codex-plugin/scripts-bak/browser-client.mjs",
   "bytes": 989621,
   "sha256": "cf71c5bf138839ff6f6df07328a63d6897458f122ed68ee0bf496e301cc06c45",
   "lineCount": 3256,

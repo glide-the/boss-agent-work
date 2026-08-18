@@ -1,0 +1,22 @@
+sequenceDiagram
+    participant Agent as Agent/Caller
+    participant Client as Browser Client
+    participant Policy as Security Policy
+    participant Repl as Runtime Bridge
+    participant Extension as Chrome Extension
+    participant Host as Native Host
+    participant Site as Target Website
+
+    Agent->>Client: setupBrowserRuntime
+    Client->>Repl: Read runtime capabilities
+    Client-->>Agent: Install agent.browsers API
+    Agent->>Client: tab.goto(url)
+    Client->>Policy: Base URL and optional local site_status
+    Policy->>Policy: Origin and file/CDP authorization as applicable
+    Client->>Extension: Browser protocol request
+    Extension->>Host: Native message
+    Host->>Site: Browser operation
+    Site-->>Host: Page result
+    Host-->>Extension: Protocol result
+    Extension-->>Client: Structured response/error
+    Client-->>Agent: Compatible result/error

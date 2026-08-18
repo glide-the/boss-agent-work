@@ -75,6 +75,8 @@ make baseline
 make verify
 ```
 
+`make baseline` 会先调用 `make browser-client`。规范要求它只从 `components/codex-plugin/src/browser-client` 使用锁定的 Bun 构建全部第一方脚本和配置；差分失败时不会继续组装 marketplace。2026-08-18 复审发现旧实现仍从 `tools/browser-client-recovery` 嵌入基线 bundle，迁移完成前不得把旧构建称为完整源码恢复。
+
 主要输出：
 
 ```text

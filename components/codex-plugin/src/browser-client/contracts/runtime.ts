@@ -17,7 +17,3 @@ export interface SetupBrowserRuntimeOptions {
 export type SetupBrowserRuntime = (
   options: SetupBrowserRuntimeOptions,
 ) => Promise<void>;
-
-export interface BaselineRuntimeModule {
-  setupBrowserRuntime: SetupBrowserRuntime;
-}

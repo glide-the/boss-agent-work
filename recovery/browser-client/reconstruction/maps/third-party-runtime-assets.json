@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "classification": "confirmed-third-party-signed-runtime-asset",
+  "package": {
+    "name": "classic-level",
+    "version": "3.0.0"
+  },
+  "input": "components/codex-plugin/scripts-bak/node_modules/classic-level/prebuilds/darwin-x64+arm64/classic-level.node",
+  "canonicalAsset": "components/codex-plugin/src/browser-client/vendor/prebuilds/classic-level/prebuilds/darwin-x64+arm64/classic-level.node",
+  "runtimeDestination": "components/codex-plugin/scripts/node_modules/classic-level/prebuilds/darwin-x64+arm64/classic-level.node",
+  "bytes": 766064,
+  "sha256": "e5555a5be604a47e4920bd93f8804ef33518aa1493e12709513f3bba7ee0096f",
+  "signatureEvidence": {
+    "authority": "Developer ID Application: OpenAI OpCo, LLC (2DC432GLL2)",
+    "teamIdentifier": "2DC432GLL2",
+    "timestamp": "2026-07-10T00:07:37-07:00",
+    "verification": "codesign -dv --verbose=2 <asset>"
+  },
+  "limitation": "The Developer ID signature cannot be reproduced from npm; this verified published binary is preserved as a vendor asset."
+}

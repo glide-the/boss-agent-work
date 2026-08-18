@@ -1,10 +1,11 @@
 SHELL := /bin/bash
 
-.PHONY: help setup extension electron native baseline extension-dev full-reconstructed all verify package clean
+.PHONY: help setup browser-client extension electron native baseline extension-dev full-reconstructed all verify package clean
 
 help:
 	@echo "Boss投递开发工作区"
 	@echo "  make setup              初始化隔离的 Python 验证环境"
+	@echo "  make browser-client     用 Bun 构建并部署 TypeScript 恢复脚本"
 	@echo "  make extension          构建 TypeScript/React Chrome 扩展"
 	@echo "  make electron           测试并组装 Electron Main 安装生命周期"
 	@echo "  make native             构建 Rust 语义重建 Native Host"
@@ -19,6 +20,9 @@ help:
 setup:
 	@./scripts/bootstrap.sh
 
+browser-client:
+	@cd components/codex-plugin/src/browser-client && bun install --frozen-lockfile && bun run build && bun run deploy
+
 extension:
 	@./scripts/build-extension.sh
 
@@ -28,13 +32,13 @@ electron:
 native:
 	@./scripts/build-native-host.sh
 
-baseline: electron
+baseline: browser-client electron
 	@./scripts/assemble-marketplace.sh baseline
 
-extension-dev: electron extension
+extension-dev: browser-client electron extension
 	@./scripts/assemble-marketplace.sh extension-dev
 
-full-reconstructed: electron extension native
+full-reconstructed: browser-client electron extension native
 	@./scripts/assemble-marketplace.sh full-reconstructed
 
 all: baseline extension-dev full-reconstructed

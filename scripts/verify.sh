@@ -7,6 +7,8 @@ EXPECTED_ID="$(jq -r '.extensionId' "$WORKSPACE_ROOT/config/identity.json")"
 EXPECTED_HOST="$(jq -r '.nativeHostName' "$WORKSPACE_ROOT/config/identity.json")"
 PYTHON="$WORKSPACE_ROOT/.venv/bin/python"
 
+(cd "$WORKSPACE_ROOT/components/codex-plugin/src/browser-client" && bun install --frozen-lockfile && bun run verify:deployed)
+
 if [[ ! -x "$PYTHON" ]]; then
   "$WORKSPACE_ROOT/scripts/bootstrap.sh"
 fi
@@ -33,6 +35,7 @@ for profile in baseline extension-dev full-reconstructed; do
     "$PYTHON" "$WORKSPACE_ROOT/scripts/validate_plugin.py" "$marketplace/plugins/chrome-dev"
     node "$marketplace/plugins/chrome-dev/scripts/patch-browser-client-site-status.mjs" \
       --check "$marketplace/plugins/chrome-dev/scripts/browser-client.mjs"
+    node "$marketplace/plugins/chrome-dev/scripts/verify-standalone.mjs"
     test -f "$marketplace/plugins/chrome-dev/config/site-status.env.example"
     test -f "$marketplace/plugins/chrome-dev/chrome-extension/manifest.json"
     test -x "$marketplace/plugins/chrome-dev/extension-host/macos/arm64/extension-host"

@@ -1,0 +1,49 @@
+{
+  "fixtureType": "historical Codex task interaction acceptance baseline",
+  "task": {
+    "threadId": "01a0053b-dd48-77f2-9e1b-6f0f56ef4b8b",
+    "title": "创建 Chrome 自动化插件",
+    "sessionPath": "/Users/dmeck/.codex/sessions/2026/08/15/rollout-2026-08-15T19-43-24-01a0053b-dd48-77f2-9e1b-6f0f56ef4b8b.jsonl",
+    "sessionBytes": 18935666,
+    "sessionSha256": "bf2c435a90f4372d9f016476c9bc2512571cd971c089b1cdfcbdb77c6265b485"
+  },
+  "confirmed": {
+    "identity": {
+      "pluginName": "chrome-dev",
+      "marketplaceName": "codex-chrome-automation-local",
+      "extensionId": "jigmpnbdhhempldjgegphdgkochgpagi",
+      "nativeHostName": "com.openai.codexextension.dev"
+    },
+    "runtime": {
+      "proxyHost": "127.0.0.1",
+      "proxyPort": 0,
+      "nativeMessagingPortEstablished": true,
+      "officialPluginAndNativeHostUnchanged": true
+    },
+    "siteStatus": {
+      "defaultEnabled": false,
+      "enableEnvironment": "BROWSER_USE_SITE_STATUS_CHECK_ENABLED",
+      "baseUrlEnvironment": "BROWSER_USE_SITE_STATUS_BASE_URL",
+      "allowedServiceHosts": ["127.0.0.1", "localhost", "[::1]"],
+      "remoteSiteStatusFallback": false,
+      "transportAndProtocolFailures": "fail-open",
+      "agentFalse": "preserve Browser Use blocked error",
+      "originAuthorizationIndependent": true,
+      "fileTransferAuthorizationIndependent": true,
+      "auraIdentityBehaviorUnchanged": true
+    }
+  },
+  "requiredForGeneratedBundles": [
+    "setupBrowserRuntime is the only Browser Client ESM export and remains importable",
+    "Browser Security, Tab API, command routing and node_repl bridge remain in the embedded verified kernel",
+    "the generated site status policy remains default-off, loopback-only and fail-open on service failure",
+    "the generated installer preserves standalone identity, dynamic loopback proxy and schema-v2 registries",
+    "the generated patcher accepts both the immutable baseline formatting and Bun-generated formatting",
+    "the generated standalone verifier validates the same plugin identity and security boundaries"
+  ],
+  "notProven": [
+    "The historical task did not execute a BOSS page business action.",
+    "This source recovery does not prove the upstream authors' original TypeScript names or module layout.",
+    "Real website interaction is not considered passed merely by bundle import, mock differential tests or Native Messaging registration checks."
+  ]
+}

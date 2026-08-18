@@ -1,0 +1,32 @@
+{
+  "action": "deploy",
+  "createdAt": "2026-08-18T12:02:34.710Z",
+  "backup": {
+    "fileCount": 344,
+    "sha256": "85d1bc4f7d456ef75eceab7df6159ebfdfce23de0af51175ec9ba2dc9e579964"
+  },
+  "candidate": {
+    "fileCount": 345,
+    "sha256": "1d64d140194ae9f6b883acfa80edd6bcf124d76e5c59ab9ba42cefdabe65b195"
+  },
+  "deployed": {
+    "fileCount": 344,
+    "sha256": "82dcd6409b504ae31ded5caca5400b9712cae040011dae4d0e6ffb51fbd9b4dd"
+  },
+  "deployedOutputs": [
+    "browser-client.mjs",
+    "check-extension-installed.js",
+    "check-native-host-manifest.js",
+    "chrome-is-running.js",
+    "extension-id.json",
+    "installManifest.mjs",
+    "installed-browsers.js",
+    "open-chrome-window.js",
+    "patch-browser-client-site-status.mjs",
+    "site-status-policy.mjs",
+    "standalone-identity.json",
+    "verify-standalone.mjs"
+  ],
+  "sourceRoot": "components/codex-plugin/src/browser-client",
+  "scriptsRoot": "components/codex-plugin/scripts"
+}

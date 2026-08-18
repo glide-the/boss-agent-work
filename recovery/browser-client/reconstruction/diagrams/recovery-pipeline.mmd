@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant Bundle as Existing MJS Bundle
+    participant Parser as AST Parser
+    participant Analyzer as Semantic Analyzer
+    participant Modules as Module Recovery
+    participant Types as Type Recovery
+    participant Builder as Builder
+    participant Diff as Differential Test Harness
+
+    Bundle->>Parser: Read immutable bytes and SHA-256
+    Parser->>Analyzer: AST, ranges, imports, exports, declarations
+    Analyzer->>Modules: Calls, strings, security and third-party clusters
+    Modules->>Types: Evidence-backed module and type candidates
+    Types->>Builder: Canonical src/browser-client modules
+    Builder->>Diff: Bun candidate artifacts
+    Bundle->>Diff: Baseline exports, protocol and behavior snapshots
+    Diff-->>Analyzer: Review mismatches and confidence

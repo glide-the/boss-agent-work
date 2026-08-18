@@ -1,0 +1,11 @@
+{
+  "pluginName": "chrome-dev",
+  "marketplaceName": "codex-chrome-automation-local",
+  "extensionId": "jigmpnbdhhempldjgegphdgkochgpagi",
+  "extensionHostName": "com.openai.codexextension.dev",
+  "extensionHostNames": [
+    "com.openai.codexextension.dev"
+  ],
+  "proxyHost": "127.0.0.1",
+  "proxyPort": 0
+}

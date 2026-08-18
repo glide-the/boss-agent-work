@@ -1,0 +1,9 @@
+flowchart LR
+    Entry["Public Runtime Entry"] --> Registry["Browser Registry"]
+    Registry --> Transport["JSON-RPC / Runtime Transport"]
+    Registry --> Browser["Browser and Tab API"]
+    Browser --> Security["Browser Security"]
+    Browser --> CDP["CDP / Playwright Adapter"]
+    Security --> SiteStatus["Local site_status Policy"]
+    Transport --> Extension["Extension / Native Host Boundary"]
+    CDP --> Vendor["Locked Third-Party Dependencies"]

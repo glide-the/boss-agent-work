@@ -1,76 +1,68 @@
-# Browser Client 模块与 MJS 清单
+# Browser Client 文件与源码覆盖清单
 
-## 顶层 `.mjs` 文件
+规范来源：`docs/browser-client-source-layout.md`。本清单记录当前已部署实现，避免把语义等价兼容内核误报为作者原始 TypeScript。
 
-基线采集时间：2026-08-18，目标为当前工作树而非 Git HEAD。
+## 1. 当前结论
 
-| 文件 | bytes | SHA-256 | 职责 | 来源与分类 |
-|---|---:|---|---|---|
-| `scripts/browser-client.mjs` | 989,621 | `cf71c5bf138839ff6f6df07328a63d6897458f122ed68ee0bf496e301cc06c45` | Browser Runtime、Browser/Tab API、JSON-RPC、CDP/Playwright、安全策略与 node_repl bootstrap | esbuild-like 打包/压缩构建物；含第三方内联代码和项目 `site_status` 窄补丁；需要分阶段恢复业务模块 |
-| `scripts/installManifest.mjs` | 12,428 | `b735d116d82fbee45afc32de5bfeb59976a7692d0659aaa947ce5eee94ee7ded` | 安装 Native Host/扩展 manifest 并解析插件路径 | 可维护的项目脚本，可直接保留 |
-| `scripts/patch-browser-client-site-status.mjs` | 4,145 | `c5a0a2e76de7d3e5980dc2b9b8178334729df7fd636f8aa6a9ed55e82b052783` | 对上游 bundle 应用/校验本地 `site_status` 窄补丁 | 当前项目新增适配模块，可直接保留到源码接入完成 |
-| `scripts/site-status-policy.mjs` | 9,526 | `74998781d56cd9f52c02f32848f7b85b0e882e0bd0415f7fea7987250187bc5d` | 默认关闭、loopback-only、fail-open、cache/inflight 合并 | 当前项目新增的独立可维护模块；已恢复为 TypeScript |
-| `scripts/verify-standalone.mjs` | 8,575 | `eaa1eb28cc5452754c67c6cc5a5e527413c31167d0b4fdffc7c583c18f1d6bd9` | standalone 插件身份、manifest、文件布局和安全补丁检查 | 可维护的项目验证脚本，可直接保留 |
+当前 `scripts` 有 12 个 manifest 管理的第一方顶层文件，以及一个由 Bun lock 管理的 vendored runtime dependency tree。12 个顶层文件均来自 `src/browser-client`，旧基线和旧工具目录均不在生产依赖图中。
 
-补充：`scripts/node_modules/classic-level.mjs` 位于子目录，是 vendored runtime dependency 的 ESM 入口，不属于顶层业务 `.mjs`；不应人工重写。
-
-## Git 与历史来源
-
-- Git 历史对 `browser-client.mjs` 只有初始导入提交 `0bdb0e8`，没有原始 TypeScript 模块历史。
-- Git HEAD blob 大小 990,858 bytes，SHA-256 为 `ba7d5056235118520afd460b2c86a4ab6952856619cab8187543f295714f932a`。
-- 该 HEAD blob 与本机 `codex-chrome-automation-local/chrome-dev/26.707.30751-standalone.3` cache 中的 bundle 字节完全一致。cache 只作为来源佐证，不作为恢复构建依赖。
-- 当前工作树 bundle 是用户已有的 `site_status` 补丁版本；恢复工程没有覆盖它。
-- 另有 `openai-bundled/browser/26.715.31925` 的更新 bundle，大小 993,697 bytes、SHA-256 `461c4ba94b821ec805da79c8e8138fe510b1b3358609fc93da47387a2cf3fbf3`，版本不同，不能作为当前文件的原始源码。
-
-## Source Map 与打包特征
-
-- 当前 Browser Client 文件及插件目录没有对应 `.map`。
-- 文件中没有 `sourceMappingURL`、`sourcesContent`、`webpack://` 或 `vite://`。
-- 没有发现可用原始模块路径或 debug build。
-- helper prelude 和 lazy CommonJS wrapper 形态与 esbuild 一致，但缺少构建元数据，因此打包器结论为 inferred。
-- module system 为 Node ESM；bundle 内同时包含 CommonJS compatibility wrappers。
-
-## 业务模块候选
-
-| 候选模块 | AST/字符串锚点 | 分类 | 第一阶段状态 |
+| 产物 | 分类 | canonical 来源 | 构建/验证状态 |
 |---|---|---|---|
-| Process Shim | `const processShim`，line 5 | confirmed | 保留兼容内核 |
-| JSON-RPC | `No handler registered for method`，line 76 | confirmed | 待恢复 |
-| Browser API Schema | `BrowserAuthHandoffCommand`，line 76 | confirmed | 待恢复 |
-| Telemetry | `browser_use.command.execute`，line 76 | confirmed | 待恢复 |
-| Browser Security | `ensureUrlOriginConsentAllowed`，line 3247 | confirmed | `site_status` 已恢复，其余待恢复 |
-| Clipboard Bridge | `Browser Use clipboard bridge`，line 3247 | confirmed | 保留兼容内核 |
-| Runtime Bridge | `browser_use_invocation_started`，line 3255 | confirmed | contract/compat adapter 已恢复 |
-| Public Entry | `ATe as setupBrowserRuntime`，line 3255 | confirmed | 候选导出一致 |
+| `browser-client.mjs` | 第一方业务入口 | `index.ts`、已提取 TS 模块、`browser-runtime.generated.js` | Bun ESM；唯一导出和 setup 双运行差分通过 |
+| `check-extension-installed.js` | 第一方 CLI | `scripts/check-extension-installed.ts` | strict TS；CLI 差分通过 |
+| `check-native-host-manifest.js` | 第一方 CLI | `scripts/check-native-host-manifest.ts` | strict TS；CLI 差分通过 |
+| `chrome-is-running.js` | 第一方 CLI | `scripts/chrome-is-running.ts` | strict TS；CLI 差分通过 |
+| `installed-browsers.js` | 第一方 CLI | `scripts/installed-browsers.ts` | strict TS；CLI 差分通过 |
+| `installManifest.mjs` | 第一方安装模块 | `scripts/install-manifest.ts` | strict TS；结构化差分通过 |
+| `open-chrome-window.js` | 第一方 CLI | `scripts/open-chrome-window.ts` | strict TS；dry-run 差分通过 |
+| `patch-browser-client-site-status.mjs` | 第一方恢复工具 | `scripts/patch-browser-client-site-status.ts` | strict TS；patch/check 差分通过 |
+| `site-status-policy.mjs` | 第一方安全模块 | `security/site-status-policy.ts` | strict TS；16 项现有测试覆盖其行为 |
+| `verify-standalone.mjs` | 第一方校验 CLI | `scripts/verify-standalone.ts` | strict TS；三档身份验证通过 |
+| `extension-id.json` | 第一方配置 | `config/extension-id.json` | 复制并逐字节校验 |
+| `standalone-identity.json` | 第一方配置 | `config/standalone-identity.json` | 复制并逐字节校验 |
+| `node_modules/classic-level.mjs` | 第一方 adapter/第三方边界 | `vendor/classic-level-adapter.ts` | Bun 生成，加载锁定依赖 |
+| `node_modules/**` | 第三方 runtime | `bun.lock` + canonical signed prebuild | 331 个非 adapter 文件与基线一致；签名资产验签通过 |
 
-## 第三方内联代码
+## 2. 不可变基线
 
-| 依赖 | 证据 | 处理 |
-|---|---|---|
-| punycode 2.3.1 | 版本 literal 与相邻实现，line 39 | 不人工重写 |
-| Statsig JavaScript SDK 3.32.6 | `SDK_VERSION` 与 `[Statsig]`，line 39 | 不人工重写 |
-| Zod | `ZodError` 与 schema runtime，line 63 | 不人工重写 |
-| classic-level/abstract-level | 独立 vendored `scripts/node_modules` 与 bundle import | 直接保留 |
+`components/codex-plugin/scripts-bak` 是修改前完整副本，共 344 个文件，树 SHA-256 为 `85d1bc4f7d456ef75eceab7df6159ebfdfce23de0af51175ec9ba2dc9e579964`。它只用于：
 
-## 恢复源码职责
+- AST 和语义证据；
+- 行为差分；
+- 紧急回滚。
 
-| 源码 | 职责 | 性质 |
-|---|---|---|
-| `src/browser-client/index.ts` | 保持唯一公开入口 | reconstructed |
-| `src/browser-client/contracts/runtime.ts` | `setupBrowserRuntime` 的最小类型边界 | reconstructed |
-| `src/browser-client/runtime/compatibility-runtime.ts` | 委托未恢复行为给已验证 bundle | reconstructed、显式过渡层 |
-| `src/browser-client/security/site-status-policy.ts` | 强类型恢复本地安全策略 | confirmed behavior + reconstructed types |
+它禁止作为 `browser-client.mjs` 的生产 import、虚拟模块或嵌入内核。
 
-依赖关系：
+## 3. Browser Client 主体证据
+
+基线 `browser-client.mjs`：989,621 bytes，SHA-256 `cf71c5bf138839ff6f6df07328a63d6897458f122ed68ee0bf496e301cc06c45`。没有 Source Map、`sourcesContent`、原始模块路径或 debug build。
+
+| 模块候选 | 证据锚点 | 分类 | 状态 |
+|---|---|---|---|
+| Process Shim | `const processShim` | confirmed | `runtime/process-shim.ts` 已提取并接入 |
+| JSON-RPC | `No handler registered for method` | confirmed | 待恢复 |
+| Browser API Schema | `BrowserAuthHandoffCommand` | confirmed | 待恢复 |
+| Telemetry | `browser_use.command.execute` | confirmed | 待恢复 |
+| Browser Security | `ensureUrlOriginConsentAllowed` | confirmed | `security/browser-security.ts` 已提取并接入 |
+| Clipboard Bridge | `Browser Use clipboard bridge` | confirmed | 待恢复或明确隔离 |
+| Runtime Bridge | `browser_use_invocation_started` | confirmed | node_repl display bridge 已提取；其余协议内核保留在兼容 JS |
+| Browser/Tab API | `tab.goto` 与 tab manager 委托 | reconstructed | `runtime/tabs.ts` 已提取并接入 |
+| Public Entry | `setupBrowserRuntime` | confirmed | canonical bundle 唯一导出；mock setup 双运行快照通过 |
+
+第三方内联签名包括 punycode 2.3.1、Statsig JavaScript SDK 3.32.6 和 Zod runtime。无法证明拆包后初始化行为等价的部分仍留在兼容内核，不能冒充第一方手写源码。
+
+## 4. 目标依赖关系
 
 ```mermaid
 flowchart LR
-    Entry["index.ts"] --> Compat["compatibility-runtime.ts"]
-    Compat --> Baseline["verified scripts/browser-client.mjs"]
-    Baseline --> PolicyMjs["scripts/site-status-policy.mjs"]
-    PolicyTs["security/site-status-policy.ts"] --> CandidatePolicy["recovery dist site-status-policy.mjs"]
-    Verify["verify-recovery.mjs"] --> Baseline
-    Verify --> Compat
-    Verify --> PolicyMjs
-    Verify --> CandidatePolicy
+    Source["src/browser-client：唯一源码与构建入口"] --> Builder["Bun build"]
+    Builder --> Stage["recovery/browser-client/dist：临时候选"]
+    Baseline["scripts-bak：只读基线"] --> Diff["差分测试"]
+    Stage --> Diff
+    Diff --> Deploy["原子部署"]
+    Deploy --> Scripts["scripts：运行时生成物"]
+    Lock["src/browser-client/bun.lock"] --> Vendor["锁定第三方依赖"]
+    Vendor --> Stage
 ```
+
+生产依赖只能沿 `Source/Lock → Builder → Stage → Scripts` 流动；`scripts-bak → BrowserBundle` 属于禁止边。
