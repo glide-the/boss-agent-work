@@ -37,3 +37,6 @@ upstream authors' source nor an acceptable final state for the requested full
 maintainable recovery. Its evidence and range mappings live under
 `recovery/browser-client/reconstruction` and must be used to progressively
 replace it with reviewed modules.
+
+The canonical security switches and their compatibility behavior are documented
+in [`docs/browser-client-security-policy-config.md`](../../../../docs/browser-client-security-policy-config.md).
