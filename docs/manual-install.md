@@ -260,6 +260,15 @@ make baseline
 make verify
 ```
 
+`make setup` 除了初始化 `.venv`，还会把项目维护的 `components/skills/chrome-file-upload-patterns` 同步到 `$CODEX_HOME/skills/chrome-file-upload-patterns`；未设置 `CODEX_HOME` 时使用 `~/.codex/skills/chrome-file-upload-patterns`。只需要重新安装 Skill 时可运行：
+
+```bash
+cd /Users/dmeck/project/boss-agent-work/develop
+make install-skills
+```
+
+项目目录是该 Skill 的可维护源码，`~/.codex/skills` 是初始化生成的安装副本；不要只修改安装副本，否则下次初始化会被项目版本覆盖。
+
 `make baseline` 会先调用 `make browser-client`。规范要求它只从 `components/codex-plugin/src/browser-client` 使用锁定的 Bun 构建全部第一方脚本和配置；差分失败时不会继续组装 marketplace。2026-08-18 复审发现旧实现仍从 `tools/browser-client-recovery` 嵌入基线 bundle，迁移完成前不得把旧构建称为完整源码恢复。
 
 主要输出：

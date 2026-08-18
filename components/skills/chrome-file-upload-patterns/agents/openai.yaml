@@ -1,0 +1,4 @@
+interface:
+  display_name: "Chrome 文件上传经验库"
+  short_description: "识别不同网站的Chrome上传控件，执行可靠上传并维护可更新的站点经验档案"
+  default_prompt: "使用 $chrome-file-upload-patterns 识别当前网站的 Chrome 上传控件，完成文件上传并验证结果。"
