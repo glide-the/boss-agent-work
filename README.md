@@ -2,7 +2,18 @@
 
 Boss投递是一个配合 Codex 使用的 Chrome 插件，可以在你当前登录的 BOSS 直聘页面中读取岗位、筛选职位、整理沟通内容并跟进求职进度。
 
-Boss投递负责控制 Chrome；实际的 Prompt 任务、辅助脚本、配置和任务数据位于独立仓库 [boss-agent-run-job](https://github.com/glide-the/boss-agent-run-job)。运行任务前，必须先把它下载到固定路径：
+Boss投递负责控制 Chrome；实际的 Prompt 任务、辅助脚本、配置和任务数据位于独立仓库 [boss-agent-run-job](https://github.com/glide-the/boss-agent-run-job)。运行任务前，必须先把它下载到固定路径。
+
+## 配套项目与浏览器链路
+
+| 项目 | 职责 | 是否为 Boss投递必需 |
+| --- | --- | --- |
+| [boss-agent-run-job](https://github.com/glide-the/boss-agent-run-job) | 保存求职 Prompt、辅助脚本、配置、进度和任务数据 | 是 |
+| [agent-browser-loader](https://github.com/glide-the/agent-browser-loader) | 为 `agent-browser` 提供本地 Chrome 启动修改器、独立用户 Profile 副本和 CDP Provider | 否，属于另一条可选浏览器链路 |
+
+`agent-browser-loader` 包含 `launch.mutate` 和 `browser.provider` 两类插件：前者调整 `agent-browser` 本地 Chrome 的启动参数、扩展和页面初始化脚本，后者把真实 Chrome Profile 一次性同步到隔离目录，再启动 Remote Debug Chrome 并把 CDP 地址交给 `agent-browser`。详细背景、反自动化检测问题和方案取舍见公众号文章[《你有海投简历的想法么？agent-browser：可以帮你》](https://mp.weixin.qq.com/s/zwlvnz4mDSyPdXYHGAnjWg)。当前安装和配置命令应以仓库 README 及本文的[本地安装指引](docs/manual-install.md#5-可选安装-agent-browser-loader)为准。
+
+两条浏览器链路彼此独立：Boss投递使用 `Codex Browser Client → Native Host → Chrome Extension`，任务中以 `@chrome-dev` 调用；`agent-browser-loader` 使用 `agent-browser → Plugin/Provider → Chrome/CDP`。要求使用 Boss投递的任务不得在连接失败时自动改用 `agent-browser`，反向也不要把 Browser Client 的 Site Status 或 Origin 策略误认为 `agent-browser` 的配置。
 
 ## 使用前准备
 
@@ -116,4 +127,6 @@ Codex 会在同一个任务中展示 Chrome 操作、岗位处理进度和当前
 - [Browser Client 策略配置（Site Status 与 Origin）](docs/browser-client-security-policy-config.md)
 - [项目完整开发过程与复线](docs/development-history.md)
 - [开发类似 Chrome 自动化插件](docs/plugin-development-guide.md)
+- [agent-browser-loader 配套仓库](https://github.com/glide-the/agent-browser-loader)
+- [agent-browser-loader 背景与技术说明](https://mp.weixin.qq.com/s/zwlvnz4mDSyPdXYHGAnjWg)
 - [Notion「Boss」项目](https://app.notion.com/p/Boss-38d30b7547c380478319d3d5d6812ac3?source=copy_link)

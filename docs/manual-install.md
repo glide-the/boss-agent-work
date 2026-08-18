@@ -4,7 +4,7 @@
 
 > 本流程会修改 Codex marketplace 配置、`~/.codex/plugins/cache`、Chrome NativeMessagingHosts 和 `chrome-native-hosts-v2.json`。Boss投递使用独立 Host `com.openai.codexextension.dev`，不会替换官方 `com.openai.codexextension`。
 
-## 零、准备任务仓库并运行 Prompt 任务
+## 零、准备配套仓库并运行 Prompt 任务
 
 Boss投递负责控制 Chrome；实际的 Prompt 任务、辅助脚本、配置和任务数据位于独立仓库 [boss-agent-run-job](https://github.com/glide-the/boss-agent-run-job)。运行任务前，必须先把它下载到固定路径。
 
@@ -62,6 +62,191 @@ bun install
 这些 Prompt 会产生真实的岗位沟通、简历投递、日历或飞书数据写入。首次运行建议先检查任务正文和当前登录账号，再明确允许执行的动作与数量。
 
 `boss-agent-run-job` 中也包含 Bun/agent-browser 轨迹脚本，但它们不是这三个 Prompt 任务的浏览器替代入口。三个任务已经明确要求使用 Boss投递 `@chrome-dev`；连接失败时必须停止。
+
+### 5. 可选：安装 agent-browser-loader
+
+[agent-browser-loader](https://github.com/glide-the/agent-browser-loader) 是 `agent-browser` 的配套本地插件工程，不是 Boss投递 Chrome Extension 的组成部分，也不是 `@chrome-dev` 连接失败时的自动降级方案。它适合明确选择 `agent-browser` 的独立任务。方案背景和反自动化检测取舍见公众号文章[《你有海投简历的想法么？agent-browser：可以帮你》](https://mp.weixin.qq.com/s/zwlvnz4mDSyPdXYHGAnjWg)。
+
+两条链路的入口和策略互不替代：
+
+| 链路 | 调用入口 | 浏览器连接 | 策略归属 |
+| --- | --- | --- | --- |
+| Boss投递 | Codex 中的 `@chrome-dev` | Browser Client → Native Host → Boss投递扩展 | 本工程 `src/browser-client` 的 Site Status/Origin 策略 |
+| agent-browser-loader | `agent-browser` CLI | Plugin/Provider → 本地 Chrome 或 CDP | `agent-browser.json`、Provider 配置和 `agent-browser` 自身策略 |
+
+#### 5.1 安装前检查
+
+插件源码和构建统一使用 Bun。`agent-browser` CLI 是独立上游程序，可按其官方方式安装；macOS 推荐 Homebrew：
+
+```bash
+bun --version
+node --version
+
+brew install agent-browser
+agent-browser --version
+```
+
+如果本机没有可被识别的 Chrome，或希望使用 Chrome for Testing，再执行：
+
+```bash
+agent-browser install
+```
+
+已经安装 `agent-browser` 时不要重复安装，可用下面的命令升级：
+
+```bash
+agent-browser upgrade
+```
+
+#### 5.2 下载并构建两个插件
+
+首次下载到固定路径：
+
+```bash
+git clone git@github.com:glide-the/agent-browser-loader.git \
+  /Users/dmeck/project/agent-browser-loader
+```
+
+使用仓库声明的 Bun 构建命令分别生成两个 Node ESM 插件：
+
+```bash
+cd /Users/dmeck/project/agent-browser-loader/plugins/agent-browser-plugin-stealth
+bun run build
+
+cd /Users/dmeck/project/agent-browser-loader/plugins/agent-browser-plugin-userprofile-browser
+bun run build
+
+cd /Users/dmeck/project/agent-browser-loader
+test -s plugins/agent-browser-plugin-stealth/dist/index.js
+test -s plugins/agent-browser-plugin-userprofile-browser/dist/index.js
+```
+
+两个检查都应以状态码 `0` 结束。仓库根目录的 `agent-browser.json` 已把它们注册为：
+
+- `stealth`：`launch.mutate`，自动作用于普通的 `agent-browser` 本地启动；
+- `userprofile-browser`：`browser.provider`，通过 `--provider userprofile-browser` 显式启用。
+
+`agent-browser.json` 中的插件脚本是相对路径。运行下面所有 `agent-browser` 命令前，应先进入 `/Users/dmeck/project/agent-browser-loader`；从其他工作目录启动会找不到插件构建物。
+
+#### 5.3 配置隔离的 Chrome Profile 副本
+
+在 Chrome 地址栏打开 `chrome://version`，查看“个人资料路径”。路径最后一段通常是 `Default`、`Profile 1` 或 `Profile 2`，把它填入 `profileDirectory`。
+
+创建本地文件：
+
+```text
+/Users/dmeck/project/agent-browser-loader/.agent-browser/userprofile.config.json
+```
+
+这是仅供本机使用的配置。创建前应在 `/Users/dmeck/project/agent-browser-loader/.git/info/exclude` 中加入一行 `.agent-browser/userprofile.config.json`，降低误提交风险。
+
+macOS 示例：
+
+```json
+{
+  "userDataDir": "/Users/dmeck/Library/Application Support/Google/Chrome",
+  "profileDirectory": "Default",
+  "debugDir": "/Users/dmeck/Library/Application Support/Google/ChromeRemoteDebug",
+  "statePath": "/Users/dmeck/.agent-browser/agent-browser-loader-state.json"
+}
+```
+
+先创建本地状态目录：
+
+```bash
+mkdir -p /Users/dmeck/.agent-browser
+```
+
+这里必须让 `debugDir` 与真实的 `userDataDir` 不同。Provider 会把登录态 Profile 同步到 `debugDir`，并且只从副本启动 Chrome，不能让自动化进程直接使用正在运行的真实 Profile。第一次同步前完全退出 Chrome 可以得到更一致的副本；虽然实现会排除锁、日志、journal 和 cache 文件，但在 Chrome 正在写入时复制仍可能取得跨文件时间点不一致的数据。
+
+`userprofile.config.json`、状态文件、会话 registry 和 `ChromeRemoteDebug` 目录可能暴露本机路径或包含 Cookies、登录会话等敏感数据，不得提交到 Git、上传或写入任务日志。上面的 `statePath` 特意放在仓库外，避免更新仓库中已有的示例状态文件。
+
+#### 5.4 检查插件注册
+
+必须从仓库根目录运行：
+
+```bash
+cd /Users/dmeck/project/agent-browser-loader
+
+agent-browser plugin list
+agent-browser plugin show stealth
+agent-browser plugin show userprofile-browser
+```
+
+结果应分别显示 `launch.mutate` 和 `browser.provider` capability。如果列表为空，先检查当前目录是否正确、`agent-browser.json` 是否存在，以及两个 `dist/index.js` 是否已构建。
+
+#### 5.5 进行无副作用冒烟验证
+
+先使用 `example.com`，不要把首次验证直接放在 BOSS 直聘或其他真实业务网站。
+
+验证用户 Profile Provider：
+
+```bash
+cd /Users/dmeck/project/agent-browser-loader
+
+agent-browser --session loader-provider-smoke \
+  --provider userprofile-browser \
+  open https://example.com
+agent-browser --session loader-provider-smoke get url
+agent-browser --session loader-provider-smoke snapshot
+agent-browser --session loader-provider-smoke close
+```
+
+首次 `open` 会同步 Profile，因此耗时明显长于后续启动。Provider 返回的浏览器应使用 `ChromeRemoteDebug` 副本；真实 Chrome Profile 不应成为启动目录。
+
+再验证普通本地启动的 `stealth` 修改器：
+
+```bash
+cd /Users/dmeck/project/agent-browser-loader
+
+agent-browser --session loader-stealth-smoke open https://example.com
+agent-browser --session loader-stealth-smoke get url
+agent-browser --session loader-stealth-smoke close
+```
+
+`launch.mutate` 只影响普通本地 launch，不影响 `--cdp`、`--auto-connect` 或其他 `browser.provider` 启动。它提供通用的最小兼容处理，不保证绕过任何网站不断变化的检测机制。
+
+#### 5.6 更新与重新构建
+
+```bash
+git -C /Users/dmeck/project/agent-browser-loader status --short
+git -C /Users/dmeck/project/agent-browser-loader pull --ff-only
+
+cd /Users/dmeck/project/agent-browser-loader/plugins/agent-browser-plugin-stealth
+bun run build
+
+cd /Users/dmeck/project/agent-browser-loader/plugins/agent-browser-plugin-userprofile-browser
+bun run build
+```
+
+如果 `git status --short` 显示本地修改，先确认修改来源，不要用 reset 或 checkout 覆盖。更新 TypeScript、Profile 规则或扩展脚本后，需要重新构建插件；修改 `stealth-extension/profiles/*.json` 后，还需要重启由该链路启动的 Chrome，或重新加载对应未打包扩展。
+
+#### 5.7 停止、清理与限制
+
+停止全部 `agent-browser` 会话：
+
+```bash
+agent-browser close --all
+```
+
+确认没有仍在使用副本的 Chrome 进程后，才可以清理 `debugDir`。该目录包含登录态副本，建议通过 Finder 移到废纸篓；不要对未核实的变量、通配符、用户主目录或真实 Chrome `userDataDir` 执行递归删除。
+
+还需注意：
+
+- 使用真实登录态、第三方扩展或 API Key 前，确认目标网站规则和授权范围；
+- 不要在 `agent-browser.json`、本地配置或日志中保存第三方扩展 API Key；
+- `agent-browser --allowed-domains` 与 Chrome Profile、既有 CDP 会话及部分 Provider 模式存在兼容限制；这与 Boss投递的 Origin 策略不是同一个机制；
+- Boss Prompt 明确要求 `@chrome-dev` 时，`agent-browser-loader` 即使安装成功也不得作为隐式替代路径。
+
+常见错误：
+
+| 错误或现象 | 检查项 |
+| --- | --- |
+| 插件未出现在 `plugin list` | 当前目录、根目录 `agent-browser.json`、两个 `dist/index.js` |
+| `profile_not_found` | `userDataDir` 和从 `chrome://version` 取得的 `profileDirectory` |
+| `chrome_not_found` | Google Chrome 安装路径，或按提示显式设置 `executablePath` |
+| `launch_failed` | Chrome 是否仍占用副本、`debugDir` 权限、Remote Debug 启动日志 |
+| Boss Prompt 仍提示 `@chrome-dev` 不可用 | 应修复 Boss投递 Extension/Native Host；安装本项目不会修复该链路 |
 
 ## 一、最短安装流程
 
