@@ -67,6 +67,7 @@ export async function findCurrentBossPluginVersionRoot(codexHome) {
   const candidates = [];
   for (const entry of entries) {
     if (entry.name === "latest" || entry.name.startsWith("latest.backup-")) continue;
+    if (!entry.isDirectory()) continue;
     const versionRoot = path.join(cacheRoot, entry.name);
     try {
       const manifest = await readPluginManifest(versionRoot);

@@ -20,7 +20,7 @@ description: 通过 Codex Chrome 插件（@Chrome / node_repl 内核）处理 BO
 先在外部 shell 探测 Chrome 插件路径（内核没有 `node:fs`）：
 
 ```bash
-ls ~/Downloads/codex-original-dmg-codex-home/plugins/cache/openai-bundled/chrome/latest/scripts/browser-client.mjs
+ls ~/.codex/plugins/cache/openai-bundled/chrome/latest/scripts/browser-client.mjs
 ```
 
 然后在 node_repl 内核中：

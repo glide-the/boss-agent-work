@@ -4,7 +4,7 @@
 // 插件缓存目录：优先固定版本，缺失时回退到 latest（插件升级后版本号会变）
 export async function resolvePluginRoot() {
   const base =
-    "/Users/dmeck/Downloads/codex-original-dmg-codex-home/plugins/cache/openai-bundled/chrome";
+    "/Users/dmeck/.codex/plugins/cache/openai-bundled/chrome";
   const fs = await import("node:fs");
   const fixed = base + "/26.601.21317";
   if (fs.existsSync(fixed + "/scripts/browser-client.mjs")) return fixed;

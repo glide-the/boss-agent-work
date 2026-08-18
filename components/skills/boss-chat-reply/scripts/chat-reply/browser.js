@@ -1,6 +1,6 @@
 // browser.js — Chrome 插件连接与聊天页打开（node_repl 内核中运行）
 // 注意：内核中 node:fs/os/path 不可用，插件根目录必须先在外部 shell 探测后显式传入：
-//   ls ~/Downloads/codex-original-dmg-codex-home/plugins/cache/openai-bundled/chrome/latest/scripts/browser-client.mjs
+//   ls ~/.codex/plugins/cache/openai-bundled/chrome/latest/scripts/browser-client.mjs
 //   ls ~/.codex/plugins/cache/openai-bundled/chrome/latest/scripts/browser-client.mjs
 
 export const BOSS_CHAT_URL = "https://www.zhipin.com/web/geek/chat?ka=header-message";

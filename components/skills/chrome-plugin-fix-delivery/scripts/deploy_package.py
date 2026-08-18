@@ -20,11 +20,11 @@ DEFAULT_PACKAGE = SKILL_DIR / "assets" / "chrome-plugin-fix-delivery-20260727.ta
 EXPECTED_SHA1 = "e52d245d3a157edfb8703ec2fb3b8fb0b0ca13b7"
 
 DEFAULT_CHROME_PLUGIN_PARENT = Path(
-    "/Users/dmeck/Downloads/codex-original-dmg-codex-home/plugins/cache/openai-bundled/chrome"
+    "/Users/dmeck/.codex/plugins/cache/openai-bundled/chrome"
 )
 DEFAULT_EXTENSION_PARENT = Path("/Users/dmeck/project/CodexChromePlug/codex-1.1.5_0")
 DEFAULT_SKILLS_DIR = Path("/Users/dmeck/.agents/skills")
-DEFAULT_CODEX_CONFIG = Path("/Users/dmeck/Downloads/codex-original-dmg-codex-home/browser/config.toml")
+DEFAULT_CODEX_CONFIG = Path("/Users/dmeck/.codex/browser/config.toml")
 DEFAULT_HOME_CONFIG = Path("/Users/dmeck/.codex/browser/config.toml")
 
 

@@ -199,7 +199,9 @@ test("patched browser client removes remote fallback and retains independent sec
   const source = await readFile(browserClientPath, "utf8");
   assert.deepEqual(verifyPatchedBrowserClientSource(source), []);
   assert.equal(source.includes('var s6="https://chatgpt.com/backend-api",a6="agent";'), false);
-  assert.equal(source.includes('var s6="http://127.0.0.1:8787",a6="agent";'), true);
+  assert.equal(source.includes('from "./site-status-policy.mjs"'), true);
+  assert.equal(source.includes("new __BossSiteStatusPolicy"), true);
+  assert.equal(source.includes(".throwIfBlocksUrl("), true);
   assert.equal(source.includes('ki("https://chatgpt.com/backend-api/aura/identity")'), true);
   assert.equal(source.includes("ensureUrlOriginConsentAllowed"), true);
   assert.equal(source.includes("ensureCurrentTabFileTransferAllowed"), true);

@@ -75,6 +75,8 @@ make baseline
 make verify
 ```
 
+`make baseline` 会先调用 `make browser-client`。规范要求它只从 `components/codex-plugin/src/browser-client` 使用锁定的 Bun 构建全部第一方脚本和配置；差分失败时不会继续组装 marketplace。2026-08-18 复审发现旧实现仍从 `tools/browser-client-recovery` 嵌入基线 bundle，迁移完成前不得把旧构建称为完整源码恢复。
+
 主要输出：
 
 ```text
@@ -157,43 +159,9 @@ node "$BOSS_WORKSPACE/dist/baseline/electron-app/bin/reconcile-native-host.mjs" 
 
 ## 二、Site Status 配置（通常不需要）
 
-Boss投递默认关闭站点状态服务检查，因此正常安装不需要配置环境变量，也不会请求 ChatGPT 的 `site_status` 接口。基础 URL 校验、站点来源授权和文件传输授权仍然生效。
+Site Status 和 Origin 授权现在使用同一份源码策略配置，不再在安装手册中分别维护。当前两者均关闭；正常安装不需要设置环境变量。
 
-只有已经在本机启动兼容服务时才需要显式启用。macOS 上可以执行：
-
-```bash
-launchctl setenv BROWSER_USE_SITE_STATUS_CHECK_ENABLED true
-launchctl setenv BROWSER_USE_SITE_STATUS_BASE_URL http://127.0.0.1:8787
-```
-
-然后完全退出并重新打开 Codex/ChatGPT Desktop。服务必须实现：
-
-```http
-GET /aura/site_status?site_url=...&url_request_source=...
-```
-
-允许时返回：
-
-```json
-{"feature_status":{"agent":true}}
-```
-
-阻止时返回：
-
-```json
-{"feature_status":{"agent":false}}
-```
-
-仅允许 `127.0.0.1`、`localhost` 或 `[::1]`。服务超时、连接失败、非 2xx、无效 JSON 或缺少字段时会记录脱敏诊断并放行。不要使用 `BROWSER_USE_SECURITY_MODE=disabled-for-local-testing`，它会关闭多项无关安全检查。
-
-关闭并清理配置：
-
-```bash
-launchctl unsetenv BROWSER_USE_SITE_STATUS_CHECK_ENABLED
-launchctl unsetenv BROWSER_USE_SITE_STATUS_BASE_URL
-```
-
-完全退出并重新打开桌面应用后生效。配置样例见 `components/codex-plugin/config/site-status.env.example`。
+完整配置、兼容环境变量、安全边界、开发启用步骤和回滚方法统一见 [Browser Client 策略配置（Site Status 与 Origin）](browser-client-security-policy-config.md)。
 
 ## 三、安装前置条件
 

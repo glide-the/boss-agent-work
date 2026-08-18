@@ -27,11 +27,11 @@ The package contains:
 ## Default Targets
 
 - Chrome plugin module parent:
-  `/Users/dmeck/Downloads/codex-original-dmg-codex-home/plugins/cache/openai-bundled/chrome`
+  `/Users/dmeck/.codex/plugins/cache/openai-bundled/chrome`
 - Chrome plugin module version:
   `26.601.21317`
 - Chrome plugin `latest` symlink:
-  `/Users/dmeck/Downloads/codex-original-dmg-codex-home/plugins/cache/openai-bundled/chrome/latest`
+  `/Users/dmeck/.codex/plugins/cache/openai-bundled/chrome/latest`
 - Unpacked Chrome extension parent:
   `/Users/dmeck/project/CodexChromePlug/codex-1.1.5_0`
 - Unpacked Chrome extension directory:
@@ -39,7 +39,7 @@ The package contains:
 - Skill target:
   `/Users/dmeck/.agents/skills`
 - Codex browser config:
-  `/Users/dmeck/Downloads/codex-original-dmg-codex-home/browser/config.toml`
+  `/Users/dmeck/.codex/browser/config.toml`
 - Home Codex browser config:
   `/Users/dmeck/.codex/browser/config.toml`
 

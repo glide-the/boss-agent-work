@@ -21,11 +21,11 @@ const opt = (name, dflt) => {
 
 const CLIENT = opt(
   "--client",
-  "/Users/dmeck/Downloads/codex-original-dmg-codex-home/plugins/cache/openai-bundled/chrome/latest/scripts/browser-client.mjs",
+  "/Users/dmeck/.codex/plugins/cache/openai-bundled/chrome/latest/scripts/browser-client.mjs",
 );
 const ORIGINS = opt("--origins", "https://www.zhipin.com,https://example.com").split(",");
 const WRITE_CONFIG = !args.includes("--no-config");
-const CODEX_HOME = process.env.CODEX_HOME || "/Users/dmeck/Downloads/codex-original-dmg-codex-home";
+const CODEX_HOME = process.env.CODEX_HOME || "/Users/dmeck/.codex";
 
 function findExtensionDir() {
   const given = opt("--ext-dir", null);

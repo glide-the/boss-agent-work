@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "terminology": "semantic-equivalent source recovery / maintainable modular reconstruction",
+  "input": {
+    "path": "components/codex-plugin/scripts-bak/browser-client.mjs",
+    "sha256": "cf71c5bf138839ff6f6df07328a63d6897458f122ed68ee0bf496e301cc06c45",
+    "bytes": 989621
+  },
+  "output": {
+    "path": "components/codex-plugin/src/browser-client/browser-runtime.generated.js",
+    "sha256": "d49ed20fa39d0c73641588dbb18d332fd44fc5359270cfc1b27d711592218cba",
+    "bytes": 1259447,
+    "formatter": {
+      "name": "prettier",
+      "version": "3.6.2",
+      "parser": "babel"
+    }
+  },
+  "extractedModules": {
+    "processShim": {
+      "inputStart": 87,
+      "inputEnd": 1103,
+      "classification": "reconstructed",
+      "target": "components/codex-plugin/src/browser-client/runtime/process-shim.ts",
+      "confidence": "confirmed"
+    },
+    "browserTabs": {
+      "inputStart": 936224,
+      "inputEnd": 936883,
+      "classification": "reconstructed",
+      "target": "components/codex-plugin/src/browser-client/runtime/tabs.ts",
+      "confidence": "confirmed"
+    },
+    "browserSecurity": {
+      "inputRanges": [
+        {
+          "start": 943073,
+          "end": 945720
+        },
+        {
+          "start": 945854,
+          "end": 947094
+        }
+      ],
+      "classification": "reconstructed",
+      "target": "components/codex-plugin/src/browser-client/security/browser-security.ts",
+      "confidence": "confirmed"
+    },
+    "browserClientSecurityPolicy": {
+      "inputStart": 941427,
+      "inputEnd": 941474,
+      "classification": "reconstructed",
+      "target": "components/codex-plugin/src/browser-client/security/policy-config.ts",
+      "confidence": "confirmed"
+    },
+    "originSessionPolicy": {
+      "inputStart": 539388,
+      "inputEnd": 552085,
+      "classification": "reconstructed",
+      "target": "components/codex-plugin/src/browser-client/security/origin-session-policy.ts",
+      "confidence": "confirmed"
+    },
+    "nodeReplDisplayBridge": {
+      "inputRanges": [
+        {
+          "start": 976736,
+          "end": 977892
+        },
+        {
+          "start": 989401,
+          "end": 989573
+        }
+      ],
+      "classification": "reconstructed",
+      "target": "components/codex-plugin/src/browser-client/runtime/node-repl-display.ts",
+      "confidence": "confirmed"
+    }
+  },
+  "unresolved": "The remaining generated kernel is behavior-preserving recovered JavaScript pending further TypeScript module extraction."
+}

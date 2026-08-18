@@ -1,0 +1,13 @@
+{
+  "terminology": "semantic-equivalent source recovery / maintainable modular reconstruction",
+  "sourceRoot": "components/codex-plugin/scripts-bak",
+  "fileCount": 344,
+  "treeHashAlgorithm": "sha256(relative-path + NUL + file-bytes + NUL, sorted by relative path)",
+  "treeSha256": "85d1bc4f7d456ef75eceab7df6159ebfdfce23de0af51175ec9ba2dc9e579964",
+  "browserClient": {
+    "path": "components/codex-plugin/scripts-bak/browser-client.mjs",
+    "bytes": 989621,
+    "sha256": "cf71c5bf138839ff6f6df07328a63d6897458f122ed68ee0bf496e301cc06c45"
+  },
+  "policy": "The input is immutable evidence. Reconstruction scripts may read it; production builds may not import or embed it."
+}

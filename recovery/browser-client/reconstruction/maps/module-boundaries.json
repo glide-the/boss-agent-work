@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "boundaries": [
+    { "name": "process-shim", "anchor": "const processShim", "classification": "confirmed" },
+    { "name": "third-party-statsig", "anchor": "[Statsig]", "classification": "confirmed" },
+    { "name": "json-rpc", "anchor": "No handler registered for method", "classification": "confirmed" },
+    { "name": "browser-api-schema", "anchor": "BrowserAuthHandoffCommand", "classification": "confirmed" },
+    { "name": "browser-security", "anchor": "ensureUrlOriginConsentAllowed", "classification": "confirmed" },
+    { "name": "clipboard-bridge", "anchor": "Browser Use clipboard bridge", "classification": "confirmed" },
+    { "name": "runtime-bridge", "anchor": "browser_use_invocation_started", "classification": "confirmed" },
+    { "name": "public-entry", "anchor": "setupBrowserRuntime", "classification": "confirmed" }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "source": "components/codex-plugin/scripts-bak/check-extension-installed.js",
+      "targetModule": "components/codex-plugin/src/browser-client/scripts/check-extension-installed.ts",
+      "classification": "confirmed",
+      "confidence": 1,
+      "evidence": ["standalone CLI source is readable", "exit-code contract"],
+      "verification": ["CLI fixture differential"]
+    },
+    {
+      "source": "components/codex-plugin/scripts-bak/check-native-host-manifest.js",
+      "targetModule": "components/codex-plugin/src/browser-client/scripts/check-native-host-manifest.ts",
+      "classification": "confirmed",
+      "confidence": 1,
+      "evidence": ["standalone CLI source is readable", "manifest schema"],
+      "verification": ["CLI fixture differential"]
+    },
+    {
+      "source": "components/codex-plugin/scripts-bak/chrome-is-running.js",
+      "targetModule": "components/codex-plugin/src/browser-client/scripts/chrome-is-running.ts",
+      "classification": "confirmed",
+      "confidence": 1,
+      "evidence": ["standalone CLI source is readable", "platform command contract"],
+      "verification": ["parser and exit-code differential"]
+    },
+    {
+      "source": "components/codex-plugin/scripts-bak/installed-browsers.js",
+      "targetModule": "components/codex-plugin/src/browser-client/scripts/installed-browsers.ts",
+      "classification": "confirmed",
+      "confidence": 1,
+      "evidence": ["standalone CLI source is readable", "platform discovery contract"],
+      "verification": ["fixture differential"]
+    },
+    {
+      "source": "components/codex-plugin/scripts-bak/open-chrome-window.js",
+      "targetModule": "components/codex-plugin/src/browser-client/scripts/open-chrome-window.ts",
+      "classification": "confirmed",
+      "confidence": 1,
+      "evidence": ["standalone CLI source is readable", "dry-run command contract"],
+      "verification": ["dry-run fixture differential"]
+    }
+  ]
+}

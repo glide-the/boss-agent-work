@@ -4,7 +4,13 @@
 
 `components/codex-plugin/scripts/browser-client.mjs` 是一个约 0.99 MB 的 Node ESM 单文件构建物。当前样本没有 Source Map、`sourcesContent`、原始模块路径或可证明的上游开发源码，因此本工程只能交付“语义等价源码恢复”或“可维护模块化重建”，不能声称恢复了作者的字节级原始源码。
 
-当前推荐方案是分阶段恢复：保留已验证 bundle 作为兼容内核，先恢复安全策略、命令路由边界和 Runtime Bridge 等可独立验证领域；第三方内联代码不人工重写。第一阶段已实现真正的 AST 分析、强类型 `site_status` 策略、兼容入口、独立候选构建和差分验证，但 marketplace 尚未切换到候选入口。
+2026-08-18 复审发现旧实现只是局部恢复：五个 `.mjs` 由 Bun 发射，但 `index.ts` 把 `scripts-bak/browser-client.mjs` 作为兼容内核重新嵌入，另有五个第一方 `.js` 和两个 JSON 未纳入统一源码构建。因此旧实现不能称为完整恢复。
+
+本轮已完成生产迁移：旧基线嵌入被移除，12 个第一方顶层文件有唯一 canonical 来源，5 个缺失 CLI 已恢复为严格 TypeScript，核心 Process/Tab/Security/node_repl display 模块已从格式化兼容内核提取并实际进入 Bun 依赖图。剩余无法可靠拆分的运行时和内联第三方代码继续以可审计 JavaScript 保存；这不等同于找回作者完整 TypeScript。
+
+新的强制目录规范见 `docs/browser-client-source-layout.md`：`components/codex-plugin/src/browser-client` 是唯一可维护源码和唯一生产构建入口；`scripts` 只是生成物；`scripts-bak` 只允许用于证据、差分和回滚，禁止进入生产依赖图；`tools/browser-client-recovery` 的生产职责废止并迁入源码根。
+
+运行验收基线引用 Codex 任务 `01a0053b-dd48-77f2-9e1b-6f0f56ef4b8b`：保持独立插件身份、动态 loopback Native Host、Browser Runtime 初始化和安全边界。该历史任务没有执行 BOSS 页面业务动作，因此本工程也不把连接或导入检查夸大为网站端到端。
 
 ## 2. 目标与非目标
 
@@ -16,7 +22,9 @@
 - 保持 Browser/Tab API、URL 安全检查、origin 授权、文件传输授权、CDP 授权和桥接协议。
 - 保持 `site_status` 默认关闭、启用时只允许 loopback、运行故障 fail-open、配置错误 fail-closed、24 小时成功缓存和同 host 并发合并。
 - 保持 `/aura/identity` 现有行为。
-- 在独立目录构建候选产物，验收前不覆盖现行 bundle。
+- 在独立目录构建候选产物，验收通过后才原子部署；部署前完整备份且可一条命令回滚。
+- 让 `scripts` 的 10 个第一方 JS/MJS 入口和 2 个 JSON 全部具有唯一源码映射。
+- 构建依赖图不得读取、import 或嵌入 `scripts-bak/browser-client.mjs`。
 
 非目标：
 
@@ -59,6 +67,8 @@ AST 基线见 `recovery/browser-client/analysis/bundle-fingerprint.json`：
 - 参考工程的部分“AST-like”脚本明确使用正则，只适合锚点扫描；本工程使用 TypeScript Compiler API 完整解析语法树，正则只用于已解析字符串的分类，绝不承担语法解析。
 - 本工程不立即重写整个大 bundle，而先以可执行差分测试替代“看起来合理”的全量重写。
 
+参考工程的可复现目录结构也作为强制前置产物：在 `recovery/browser-client/reconstruction` 建立 `analysis`、`artifacts`、`diagrams`、`maps` 和 `scripts`。完整规范见 `docs/browser-client-reconstruction-resources.md`。与参考工程不同，本项目不在 `reconstruction/reconstructed` 再复制一份生产源码；唯一源码始终位于 `components/codex-plugin/src/browser-client`，semantic map 直接引用该目标。
+
 ## 5. 证据与可信度
 
 - `confirmed`：直接来自 AST、ESM 导出、字符串、Git blob、哈希或测试结果。
@@ -94,12 +104,14 @@ recovery/browser-client/analysis/
 恢复顺序按风险从低到高：
 
 1. 已独立、已有单测的 `site-status-policy`。
-2. 公开 Runtime contract 和兼容入口。
+2. 公开 Runtime contract、Process Shim 和独立 Runtime 入口。
 3. Browser Security command classifier 与授权顺序。
 4. JSON-RPC/Node REPL Runtime Bridge。
 5. Browser/Tab API facade 和命令路由。
 6. CDP/Playwright adapter。
-7. 仅在依赖边界明确后，将第三方代码恢复为 Bun 锁定的正常 package dependency；否则继续留在兼容内核。
+7. 仅在依赖边界明确后，将第三方代码恢复为 Bun 锁定的正常 package dependency；无法证明的边界必须明确隔离并记录，不能伪装成第一方恢复源码。
+
+此外，五个现有第一方 CLI `.js` 必须逐一迁移为 TypeScript，并在语义主体迁移前后运行结构化差分。把压缩 bundle 改名为 `.ts`、添加 `@ts-nocheck` 或用 TypeScript 入口包装旧 bundle，都不算完成语义恢复。
 
 类型恢复优先使用 `unknown`、判别联合和运行时收窄。只有 AST/文档 schema/测试共同支持时才定义具体字段。禁止用 `any` 掩盖动态边界。
 
@@ -107,30 +119,56 @@ recovery/browser-client/analysis/
 
 ```text
 components/codex-plugin/src/browser-client/
+├── package.json
+├── bun.lock
+├── README.md
+├── build/
+│   ├── analyze.ts
+│   ├── build.ts
+│   ├── deploy.ts
+│   ├── inventory.ts
+│   └── verify.ts
+├── config/
+│   ├── extension-id.json
+│   └── standalone-identity.json
 ├── contracts/runtime.ts
 ├── index.ts
-├── runtime/compatibility-runtime.ts
+├── scripts/
+│   ├── check-extension-installed.ts
+│   ├── check-native-host-manifest.ts
+│   ├── chrome-is-running.ts
+│   ├── installed-browsers.ts
+│   ├── install-manifest.ts
+│   ├── open-chrome-window.ts
+│   ├── patch-browser-client-site-status.ts
+│   └── verify-standalone.ts
 ├── security/site-status-policy.ts
+├── test/
 └── tsconfig.json
 
-tools/browser-client-recovery/
-├── analyze-browser-client.mjs
-├── build-recovered-source.mjs
-├── verify-recovery.mjs
-├── bun.lock
-├── package.json
-└── README.md
-
 recovery/browser-client/
-├── analysis/
-├── fixtures/baseline-manifest.json
+├── reconstruction/
+│   ├── analysis/
+│   ├── artifacts/
+│   ├── diagrams/
+│   ├── maps/
+│   └── scripts/
+├── fixtures/
+│   ├── baseline-manifest.json
+│   ├── interaction-baseline.json
+│   └── scripts-backup-manifest.json
 └── dist/
     ├── browser-client.mjs
+    ├── installManifest.mjs
+    ├── patch-browser-client-site-status.mjs
+    ├── site-status-policy.mjs
+    ├── verify-standalone.mjs
     ├── build-manifest.json
-    └── security/site-status-policy.mjs
 ```
 
-`scripts/browser-client.mjs` 仍是现行已验证生成物；`recovery/browser-client/dist/browser-client.mjs` 是阶段一候选，不进入当前 marketplace。
+`scripts-bak` 是部署前不可变基线，不进入 marketplace 或生产依赖图；`recovery/browser-client/dist` 是 staging；`scripts` 是经差分门禁部署的 Bun 生成物目录。旧 `tools/browser-client-recovery` 在迁移完成后删除。
+
+实施顺序是不可交换的：先让 reconstruction 工程可复跑并通过自校验，再迁移 `src/browser-client` 的生产构建，最后才允许替换 `scripts`。
 
 ## 9. 类型与命名策略
 
@@ -142,22 +180,27 @@ recovery/browser-client/
 
 ## 10. 第三方依赖隔离
 
-当前直接确认的内联签名包括 punycode 2.3.1、Statsig JavaScript SDK 3.32.6 和 Zod runtime。它们不属于 Browser Client 业务源码恢复范围。后续如要去内联，必须先证明 package 版本、初始化参数、tree-shaking 条件和异常行为一致，再以 Bun 锁文件依赖替代；否则保留兼容内核。
+当前直接确认的内联签名包括 punycode 2.3.1、Statsig JavaScript SDK 3.32.6 和 Zod runtime。它们不属于 Browser Client 第一方业务源码恢复范围。后续如要去内联，必须先证明 package 版本、初始化参数、tree-shaking 条件和异常行为一致，再以源码根内的 Bun 锁文件依赖替代；不能继续用整个基线 bundle 作为第三方容器。
 
 ## 11. 构建工具与输出
 
-包管理器和脚本运行时固定为 Bun 1.2.20，`bun.lock` 锁定 TypeScript 6.0.3。构建器先通过 TypeScript Compiler API 执行完整 strict typecheck，再调用 `Bun.build` 生成两个真实 Node ESM bundle：唯一公开入口 `browser-client.mjs` 和用于独立差分的 `security/site-status-policy.mjs`。build manifest 同时记录 Bun/TypeScript 版本、bundler 参数、源码哈希、基线哈希以及每个产物的大小和哈希。
+包管理器和脚本运行时固定为 Bun 1.2.20。`components/codex-plugin/src/browser-client/bun.lock` 锁定 TypeScript、Node 类型和可证明的第三方运行时依赖。构建器先执行 strict typecheck，再调用 `Bun.build` 生成全部 10 个 Node ESM/CLI 入口并复制、校验 2 个 JSON 配置。
+
+构建器必须扫描 Bun metafile/输入清单，发现 `scripts-bak`、当前 `scripts` 或旧 `tools/browser-client-recovery` 出现在生产依赖图时立即失败。
 
 ```bash
-cd tools/browser-client-recovery
-bun install --frozen-lockfile --ignore-scripts
-bun run analyze
+cd components/codex-plugin/src/browser-client
+bun install --frozen-lockfile
+bun run typecheck
+bun run test
 bun run build
 bun run verify
-# 或一次执行完整检查：bun run check
+# 差分通过后部署：bun run deploy
+# 验证 scripts 与 Bun 输出一致：bun run verify:deployed
+# 回滚完整不可变基线：bun run rollback
 ```
 
-第一阶段候选不是自包含全量重建：其未恢复行为通过 compatibility runtime 委托给现行 bundle。该事实写入源码注释和 build manifest。
+当前 `scripts/browser-client.mjs` 已在全部门禁通过后切换。生产 dependency graph 独立于 `scripts-bak`、当前 `scripts` 和已删除的旧工具目录；兼容内核是源码根中受 map 和哈希约束的 canonical JavaScript，并非运行时读取旧 bundle。
 
 ## 12. 导出 API 兼容
 
@@ -167,14 +210,14 @@ bun run verify
 setupBrowserRuntime
 ```
 
-恢复内部模块不从 Browser Client 入口额外导出，避免改变调用方面。候选导入验证、bundle 内联检查、基线 URL 解析和 export 集合差分已纳入 `bun run verify`。
+恢复内部模块不从 Browser Client 入口额外导出。生成物在模拟真实 `scripts` 布局和实际 `scripts` 目录均完成 import smoke，export 集合和函数 arity 与基线一致。
 
 ## 13. 协议边界
 
 - Agent/调用方只依赖 `setupBrowserRuntime` 安装的 `agent`/Browser API。
 - Browser Client 负责 command schema、dispatch、安全检查、backend selection 和结果元数据。
 - Node REPL Bridge 提供环境变量、fetch、elicitation、telemetry、display 和 response metadata。
-- Chrome Extension 与 Native Host 的消息协议由现行 bundle/扩展实现保持，不在第一阶段重写。
+- Chrome Extension 与 Native Host 的消息协议保持兼容；恢复可以重建 Browser Client 侧适配，但不得调整扩展或 Host 协议身份。
 - CDP/Playwright 是 Browser Client 到 browser backend 的动态边界，静态调用图不能证明其全部行为。
 
 ## 14. `site_status` 迁移
@@ -213,20 +256,21 @@ setupBrowserRuntime
 4. 恢复 `site_status` 与现行 `.mjs` 双运行快照。
 5. 安全调用链锚点与 remote fallback 负断言。
 6. 项目现有单测和 patch check。
-7. 三档 marketplace 构建与 standalone 身份检查。
-8. 真实浏览器/网站仅在明确授权后执行。
+7. 安装器、补丁器和策略模块的双运行结构化快照。
+8. 三档 marketplace 构建与 standalone 身份检查。
+9. 真实浏览器/网站仅在明确授权后执行。
 
-第一阶段未声称验证 Browser/Tab 全对象运行行为；兼容入口委托同一基线内核，因此该部分没有独立实现差异，但也不是全量恢复完成的证据。
+当前实现已对相同 mock node_repl/config/fetch/nativePipe 执行基线与候选双运行，确认导出、globals、agent/display 形状、after-submitted hook、response metadata、日志和错误输出一致。真实 Browser Runtime/网站验证仍需明确授权。
 
 ## 17. 构建可重复性
 
 - `packageManager: bun@1.2.20` 与 `bun.lock` 锁定包管理器和 TypeScript 包。
 - `Bun.build` 参数固定为 `target: node`、`format: esm`、`splitting: false`、`minify: false`、`sourcemap: none`。
-- build manifest 记录 TypeScript 版本、全部恢复源码 SHA-256、基线 SHA-256 和发射文件。
-- `fixtures/baseline-manifest.json` 将保留原位的现行 bundle 作为 hash-locked fixture，避免复制或覆盖近 1 MB 文件。
+- build manifest 记录 TypeScript 版本、全部恢复源码 SHA-256、基线 SHA-256、10 个 JS/MJS 和 2 个 JSON 发射文件。
+- `scripts-bak` 共 344 个文件，树哈希为 `85d1bc4f7d456ef75eceab7df6159ebfdfce23de0af51175ec9ba2dc9e579964`；构建和部署都会验证它未漂移。
 - 工具不依赖 Codex plugin cache；cache 仅作为历史来源比对证据。
 - 分析和构建都从仓库内明确路径读取。
-- 产物进入独立 `recovery/`，不会隐式覆盖现行 bundle。
+- 产物先进入 `recovery/`；只有 `bun run deploy` 在差分通过后原子替换 manifest 中全部第一方目标。
 
 ## 18. 上游升级与 bundle 漂移
 
@@ -321,22 +365,22 @@ sequenceDiagram
 
 ## 21. 防过度设计评审
 
-评审结论：通过第一阶段实施，暂不批准全量替换。
+评审结论：当前方案满足顶层生产树的可维护源码接管和语义等价验证；不声称作者完整 TypeScript 已恢复。
 
-- 满足“可维护源码恢复”：有真实 AST、证据表、TypeScript 模块和可运行差分，不是只格式化 minified bundle。
-- 能生成兼容候选 `browser-client.mjs`，但当前候选仍委托兼容内核，不能描述为完整独立重建。
+- AST、范围 map、格式化兼容内核和已提取 TypeScript 共同构成可审计源码；兼容内核不得被描述为作者原稿。
+- 生产构建已禁止读取或嵌入 `scripts-bak`，并以 metafile/源码扫描设硬门禁。
 - 公开导出保持一致。
 - confirmed 与 inferred 已分离；没有将 reconstructed 命名描述为作者原名。
 - 第三方依赖未重写。
 - 没有引入框架、UI、服务或协议变更。
-- 最小可行范围是 `site_status`、runtime contract、兼容入口和 AST/差分工具。
-- 可按 Security → Runtime Bridge → Command Router → CDP/Playwright 分阶段扩大。
-- 当前 marketplace 仍使用已验证 bundle，回退成本为零。
+- 最小范围覆盖 10 个第一方 JS/MJS、2 个配置、runtime contract、AST/差分、部署与回滚工具。
+- 后续可按 JSON-RPC/Command Router → transport → CDP/Playwright 继续缩小兼容内核，不阻塞现有生产接管。
+- 三档 marketplace 均已使用本次 canonical scripts 重新组装并验证。
 
 ## 22. 验收、限制与回滚
 
-第一阶段已满足：AST 零诊断、公开导出一致、候选可导入、TypeScript strict build、重复构建哈希一致、`site_status` 双运行差分、安全锚点检查、现有 16 个策略单测、三档现行 marketplace 组装和三档 standalone 身份检查。
+已满足：AST 零诊断、源码根自包含构建、12 个顶层文件唯一来源、生产 dependency graph 禁止基线、strict typecheck、核心模块单测、公开导出/arity、mock setup 双运行、CLI/安装器/补丁器/策略差分、安全锚点、签名依赖校验、重复构建、Electron 生命周期测试、三档 marketplace 与 standalone 身份验证。
 
-尚未满足：独立恢复 Browser/Tab 完整对象、完整 mock transport 双运行、三档 marketplace **新候选入口**接入、真实浏览器验证。因此不得切换现行入口，也不得声称全量语义等价已经证明。已经通过的 marketplace/standalone 验证使用现行兼容 bundle，不等于候选已获生产接入批准。
+未证明：作者字节级源码、未拆分内核的作者类型/命名，以及真实 Chrome/BOSS 网站端到端行为。
 
-回滚方式：保持 `scripts/browser-client.mjs` 和现有 assembly 不变；删除或忽略 `src/browser-client`、`tools/browser-client-recovery` 和 `recovery/browser-client` 即可。第一阶段没有修改 Chrome/Native Host 注册，也没有提交或推送。
+回滚方式：在 `components/codex-plugin/src/browser-client` 运行 `bun run rollback`，先验证不可变备份再原子恢复完整基线。恢复工程不修改 Chrome/Native Host 注册。

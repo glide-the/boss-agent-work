@@ -15,7 +15,7 @@ const opt = (name, dflt) => {
 };
 const FILE = opt(
   "--client",
-  "/Users/dmeck/Downloads/codex-original-dmg-codex-home/plugins/cache/openai-bundled/chrome/latest/scripts/browser-client.mjs",
+  "/Users/dmeck/.codex/plugins/cache/openai-bundled/chrome/latest/scripts/browser-client.mjs",
 );
 const PORT = opt("--port", "8791");
 

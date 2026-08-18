@@ -1,0 +1,27 @@
+{
+  "name": "@boss-agent/browser-client-source",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.2.20",
+  "engines": {
+    "bun": "1.2.20"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit --pretty false -p ./tsconfig.json",
+    "test": "bun test ./test",
+    "build": "bun ./build/build.ts",
+    "build:utilities": "bun ./build/build.ts --utilities-only",
+    "verify": "bun ./build/verify.ts",
+    "deploy": "bun ./build/deploy.ts",
+    "verify:deployed": "bun ./build/deploy.ts --check",
+    "rollback": "bun ./build/deploy.ts --rollback"
+  },
+  "dependencies": {
+    "classic-level": "3.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "1.2.20",
+    "@types/node": "24.6.0",
+    "typescript": "6.0.3"
+  }
+}

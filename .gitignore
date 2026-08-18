@@ -3,6 +3,9 @@
 .cache/
 components/chrome-extension/node_modules/
 components/chrome-extension/dist/
+components/codex-plugin/src/browser-client/node_modules/
+recovery/browser-client/reconstruction/node_modules/
+recovery/browser-client/utilities-dist/
 components/native-host/target/
 dist/
 artifacts/

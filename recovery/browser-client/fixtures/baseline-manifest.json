@@ -1,10 +1,10 @@
 {
-  "fixtureType": "in-place verified bundle with immutable hash lock",
+  "fixtureType": "immutable scripts backup with hash lock",
   "activeBaseline": {
-    "path": "components/codex-plugin/scripts/browser-client.mjs",
+    "path": "components/codex-plugin/scripts-bak/browser-client.mjs",
     "bytes": 989621,
     "sha256": "cf71c5bf138839ff6f6df07328a63d6897458f122ed68ee0bf496e301cc06c45",
-    "note": "Current working-tree bundle with the user's verified local site_status integration."
+    "note": "Pre-deployment backup of the user's verified local site_status integration."
   },
   "upstreamImportedBlob": {
     "gitRevision": "HEAD",
@@ -13,5 +13,5 @@
     "sha256": "ba7d5056235118520afd460b2c86a4ab6952856619cab8187543f295714f932a",
     "matchingCacheEvidence": "codex-chrome-automation-local/chrome-dev/26.707.30751-standalone.3"
   },
-  "copyPolicy": "The large verified bundle remains in place and is not duplicated or overwritten."
+  "copyPolicy": "scripts-bak is immutable and is never overwritten by build or deployment commands."
 }

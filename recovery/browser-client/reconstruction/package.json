@@ -1,0 +1,21 @@
+{
+  "name": "browser-client-reconstruction-evidence",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.2.20",
+  "engines": {
+    "bun": "1.2.20"
+  },
+  "scripts": {
+    "reproduce": "bun ./scripts/reconstruct.mjs",
+    "verify": "bun ./scripts/verify-artifacts.mjs",
+    "package": "bun ./scripts/package-reconstruction.mjs",
+    "materialize-utilities": "bun ./scripts/materialize-utility-sources.mjs",
+    "materialize-runtime": "bun ./scripts/materialize-browser-runtime.mjs",
+    "materialize-third-party": "bun ./scripts/materialize-third-party-assets.mjs"
+  },
+  "devDependencies": {
+    "prettier": "3.6.2",
+    "typescript": "6.0.3"
+  }
+}

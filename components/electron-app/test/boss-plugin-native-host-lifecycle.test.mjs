@@ -141,6 +141,31 @@ test("lifecycle filters unrelated install events and selects the highest install
   assert.equal(result.versionRoot, second.versionRoot);
 });
 
+test("startup discovery ignores metadata files and repairs latest from a deleted version to the current version", async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "boss-electron-stale-latest-"));
+  t.after(async () => await fs.rm(root, { recursive: true, force: true }));
+  const { codexHome, versionRoot } = await copyPluginFixture(root, "26.707.30751-standalone.4");
+  const runtime = await createRuntime(root);
+  const cacheRoot = path.dirname(versionRoot);
+  const deletedVersionRoot = path.join(cacheRoot, "26.707.30751-standalone.3");
+  const latestRoot = path.join(cacheRoot, "latest");
+  await fs.writeFile(path.join(cacheRoot, ".DS_Store"), "finder metadata");
+  await fs.symlink(deletedVersionRoot, latestRoot);
+
+  const lifecycle = new BossPluginNativeHostLifecycle({
+    architecture: "arm64",
+    codexHome,
+    homeDirectory: root,
+    platform: "darwin",
+    ...runtime,
+  });
+  const result = await lifecycle.reconcileCurrentInstall();
+
+  assert.equal(result.versionRoot, versionRoot);
+  assert.equal(result.latestAction, "replace-symlink");
+  assert.equal(await fs.realpath(latestRoot), await fs.realpath(versionRoot));
+});
+
 test("Electron registration runs on ready and subscribes to plugin installation", async () => {
   let ready;
   let listener;

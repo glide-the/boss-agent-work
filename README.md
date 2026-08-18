@@ -113,6 +113,7 @@ Codex 会在同一个任务中展示 Chrome 操作、岗位处理进度和当前
 ## 相关内容
 
 - [本地安装与排障](docs/manual-install.md)
+- [Browser Client 策略配置（Site Status 与 Origin）](docs/browser-client-security-policy-config.md)
 - [项目完整开发过程与复线](docs/development-history.md)
 - [开发类似 Chrome 自动化插件](docs/plugin-development-guide.md)
 - [Notion「Boss」项目](https://app.notion.com/p/Boss-38d30b7547c380478319d3d5d6812ac3?source=copy_link)

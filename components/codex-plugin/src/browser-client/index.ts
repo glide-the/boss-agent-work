@@ -1,7 +1,9 @@
 /**
- * Browser Client semantic source recovery entrypoint.
+ * Sole production entrypoint for the Browser Client reconstruction.
  *
- * Phase 1 preserves the verified bundle as a compatibility kernel. The public
- * export set deliberately remains identical to the baseline.
+ * The checked-in compatibility kernel is deterministic recovered JavaScript,
+ * with reviewed business boundaries progressively extracted into strict
+ * TypeScript modules. The production build never reads the immutable bundle
+ * fixture or the generated scripts directory.
  */
-export { setupBrowserRuntime } from "./runtime/compatibility-runtime.js";
+export { setupBrowserRuntime } from "./browser-runtime.generated.js";
