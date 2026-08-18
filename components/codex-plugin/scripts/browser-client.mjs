@@ -232,6 +232,15 @@ function createBrowserSecurityClass(dependencies) {
   };
 }
 
+// security/policy-config.ts
+var BROWSER_CLIENT_SECURITY_POLICY = Object.freeze({
+  siteStatus: "disabled",
+  originAuthorization: "disabled"
+});
+function siteStatusEnvironment(runtimeEnvironment = {}) {
+  return BROWSER_CLIENT_SECURITY_POLICY.siteStatus === "enabled" ? runtimeEnvironment : {};
+}
+
 // runtime/node-repl-display.ts
 function primitiveDisplayValue(value) {
   if (value === null)
@@ -351,6 +360,778 @@ import { subscribe as fw } from "node:diagnostics_channel";
 import { AsyncLocalStorage as S6 } from "node:async_hooks";
 import { platform as k6 } from "node:os";
 import { randomUUID as G6 } from "node:crypto";
+
+// security/origin-session-policy.ts
+function parseBrowserUrl(value) {
+  if (typeof value !== "string" || value.trim().length === 0)
+    return null;
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
+}
+function httpOriginFromUrl(url) {
+  return url == null || url.protocol !== "http:" && url.protocol !== "https:" ? null : url.origin;
+}
+function fileUrlWithoutSearchAndHash(url) {
+  url.search = "";
+  url.hash = "";
+  return url.href;
+}
+function extractBrowserOrigin(value) {
+  const url = parseBrowserUrl(value);
+  return url == null ? null : url.protocol === "file:" ? fileUrlWithoutSearchAndHash(url) : httpOriginFromUrl(url);
+}
+function extractHttpOrigin(value) {
+  return httpOriginFromUrl(parseBrowserUrl(value));
+}
+function isLocalhostHostname(hostname) {
+  const normalized = hostname.toLowerCase();
+  return normalized === "localhost" || normalized.endsWith(".localhost") || normalized === "127.0.0.1" || normalized === "[::1]" || normalized === "::1";
+}
+var APPROVAL_MODE = "approval_mode";
+var HISTORY_APPROVAL_MODE = "history_approval_mode";
+var NEVER_ASK = "never_ask";
+var DISABLE_AUTO_REVIEW = "disable_auto_review";
+var ORIGINS = "origins";
+var FULL_CDP = "full_cdp";
+var DOWNLOADS = "downloads";
+var UPLOADS = "uploads";
+var ALLOWED = "allowed";
+var DENIED = "denied";
+var DOWNLOAD_APPROVAL_MODE = "download_approval_mode";
+var UPLOAD_APPROVAL_MODE = "upload_approval_mode";
+var BROWSING_HISTORY = "browsing_history";
+var APPROVALS_REVIEWER = "approvals_reviewer";
+var GUARDIAN_SUBAGENT = "guardian_subagent";
+var AUTO_REVIEW = "auto_review";
+var GUARDIAN_CACHE_TTL_MS = 300000;
+function record(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
+}
+function booleanProperty(source, ...names) {
+  for (const name of names) {
+    if (typeof source[name] === "boolean")
+      return source[name];
+  }
+  return;
+}
+function stringProperty(source, ...names) {
+  for (const name of names) {
+    if (typeof source[name] === "string")
+      return source[name].trim() || null;
+  }
+  return null;
+}
+function stringArrayProperty(source, ...names) {
+  for (const name of names) {
+    const value = source[name];
+    if (Array.isArray(value)) {
+      return value.filter((item) => typeof item === "string").map((item) => item.trim()).filter((item) => item.length > 0);
+    }
+  }
+  return [];
+}
+function appendUnique(target, additions) {
+  for (const addition of additions) {
+    if (!target.some((item) => item.toLowerCase() === addition.toLowerCase())) {
+      target.push(addition);
+    }
+  }
+}
+function networkDomains(source) {
+  const domains = record(source.domains);
+  if (domains != null) {
+    const allowed = [];
+    const denied = [];
+    for (const [domain, decision] of Object.entries(domains)) {
+      if (decision === "allow")
+        allowed.push(domain);
+      else if (decision === "deny")
+        denied.push(domain);
+    }
+    return [allowed, denied];
+  }
+  return [
+    stringArrayProperty(source, "allowedDomains", "allowed_domains"),
+    stringArrayProperty(source, "deniedDomains", "denied_domains")
+  ];
+}
+function mergeNetworkLayer(target, source) {
+  const enabled = booleanProperty(source, "enabled");
+  if (enabled != null && (!enabled || target.enabled == null))
+    target.enabled = enabled;
+  const [allowed, denied] = networkDomains(source);
+  appendUnique(target.allowedDomains, allowed);
+  appendUnique(target.deniedDomains, denied);
+}
+function mergeOnlyNetworkDenials(target, source) {
+  const [, denied] = networkDomains(source);
+  appendUnique(target.deniedDomains, denied);
+}
+function mergeCodexNetworkPolicy(requirements, config) {
+  const requirementsRecord = record(requirements);
+  const configRecord = record(config);
+  if (requirementsRecord == null || configRecord == null) {
+    throw new TypeError("Codex network policy layers must be objects.");
+  }
+  const merged = {
+    enabled: null,
+    allowedDomains: [],
+    deniedDomains: [],
+    hardDenyAllowlistMisses: false
+  };
+  const requirementsNetwork = record(requirementsRecord.requirements)?.network;
+  const managedNetwork = record(requirementsNetwork);
+  if (managedNetwork != null) {
+    mergeNetworkLayer(merged, managedNetwork);
+    merged.hardDenyAllowlistMisses = booleanProperty(managedNetwork, "managedAllowedDomainsOnly", "managed_allowed_domains_only") ?? false;
+  }
+  const configRoot = record(configRecord?.config) ?? configRecord;
+  if (configRoot == null)
+    return merged;
+  const defaultPermissions = stringProperty(configRoot, "default_permissions", "defaultPermissions");
+  const localNetwork = defaultPermissions == null ? null : record(record(record(configRoot.permissions)?.[defaultPermissions])?.network);
+  if (localNetwork == null)
+    return merged;
+  if (merged.hardDenyAllowlistMisses) {
+    if (booleanProperty(localNetwork, "enabled") === false)
+      merged.enabled = false;
+    mergeOnlyNetworkDenials(merged, localNetwork);
+  } else {
+    mergeNetworkLayer(merged, localNetwork);
+  }
+  return merged;
+}
+function normalizedHostname(value) {
+  return value.toLowerCase().replace(/\.+$/u, "");
+}
+function hostnameWithoutPort(value) {
+  const trimmed = value.trim();
+  if (trimmed.startsWith("[")) {
+    const bracket = trimmed.indexOf("]");
+    if (bracket !== -1)
+      return normalizedHostname(trimmed.slice(1, bracket));
+  }
+  return (trimmed.match(/:/g) ?? []).length === 1 ? normalizedHostname(trimmed.split(":")[0] ?? "") : normalizedHostname(trimmed);
+}
+function normalizedDomainPattern(value) {
+  const trimmed = value.trim();
+  if (trimmed === "*")
+    return "*";
+  if (trimmed.startsWith("**.")) {
+    return `**.${hostnameWithoutPort(trimmed.slice(3))}`;
+  }
+  if (trimmed.startsWith("*.")) {
+    return `*.${hostnameWithoutPort(trimmed.slice(2))}`;
+  }
+  return hostnameWithoutPort(trimmed);
+}
+function domainPatternMatches(pattern, hostname) {
+  const normalizedPattern = normalizedDomainPattern(pattern);
+  const normalizedHost = hostnameWithoutPort(hostname);
+  if (normalizedPattern.length === 0 || normalizedHost.length === 0)
+    return false;
+  if (normalizedPattern === "*")
+    return true;
+  if (normalizedPattern.startsWith("**.")) {
+    const suffix = normalizedPattern.slice(3);
+    return normalizedHost === suffix || normalizedHost.endsWith(`.${suffix}`);
+  }
+  const regularExpression = `^${normalizedPattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*")}$`;
+  return new RegExp(regularExpression, "u").test(normalizedHost);
+}
+function networkPolicyHostname(url) {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? hostnameWithoutPort(parsed.host) : null;
+  } catch {
+    return null;
+  }
+}
+function evaluateMergedNetworkPolicy(policy, url) {
+  const hostname = networkPolicyHostname(url);
+  if (hostname == null)
+    return null;
+  if (policy.enabled === false || policy.deniedDomains.some((pattern) => domainPatternMatches(pattern, hostname))) {
+    return "deny";
+  }
+  if (policy.hardDenyAllowlistMisses && !policy.allowedDomains.some((pattern) => domainPatternMatches(pattern, hostname))) {
+    return "deny";
+  }
+  return null;
+}
+function approvalTableName(resource) {
+  switch (resource.kind) {
+    case "origin":
+      return ORIGINS;
+    case "fileTransfer":
+      return resource.transferKind === "download" ? DOWNLOADS : UPLOADS;
+    case "fullCdp":
+      return FULL_CDP;
+    case "sensitiveData":
+      return null;
+  }
+}
+function resourceValue(resource) {
+  switch (resource.kind) {
+    case "origin":
+    case "fileTransfer":
+    case "fullCdp":
+      return resource.origin;
+    case "sensitiveData":
+      return resource.sensitiveData;
+  }
+}
+function approvalMode(config, resource) {
+  let propertyName;
+  switch (resource.kind) {
+    case "origin":
+      propertyName = APPROVAL_MODE;
+      break;
+    case "fileTransfer":
+      propertyName = resource.transferKind === "download" ? DOWNLOAD_APPROVAL_MODE : UPLOAD_APPROVAL_MODE;
+      break;
+    case "fullCdp":
+      return "always_ask";
+    case "sensitiveData":
+      propertyName = HISTORY_APPROVAL_MODE;
+      break;
+  }
+  return config[propertyName] === NEVER_ASK ? "never_ask" : "always_ask";
+}
+function validConversationId(value) {
+  return typeof value === "string" && value.length > 0 && value.length <= 128 && /^[A-Za-z0-9_-]+$/u.test(value);
+}
+function conversationConfigPath(conversationId) {
+  return validConversationId(conversationId) ? `browser/sessions/${conversationId}.toml` : null;
+}
+function wildcardParts(pattern) {
+  const parts = [];
+  let current = "";
+  for (let index = 0;index < pattern.length; index += 1) {
+    const character = pattern[index];
+    if (character === "*") {
+      parts.push(current);
+      current = "";
+      continue;
+    }
+    if (character === "\\") {
+      const next = pattern[index + 1];
+      if (next === "*" || next === "\\") {
+        current += next;
+        index += 1;
+        continue;
+      }
+    }
+    current += character;
+  }
+  parts.push(current);
+  return parts;
+}
+function wildcardMatches(pattern, value) {
+  const parts = wildcardParts(pattern);
+  if (parts.length === 1)
+    return parts[0] === value;
+  const first = parts[0] ?? "";
+  let remaining = value;
+  if (first.length > 0) {
+    if (!remaining.startsWith(first))
+      return false;
+    remaining = remaining.slice(first.length);
+  }
+  for (const part of parts.slice(1, -1)) {
+    if (part.length === 0)
+      continue;
+    const matchIndex = remaining.indexOf(part);
+    if (matchIndex === -1)
+      return false;
+    remaining = remaining.slice(matchIndex + part.length);
+  }
+  const last = parts.at(-1) ?? "";
+  return last.length === 0 || remaining.endsWith(last);
+}
+function originHostPort(origin) {
+  const schemeEnd = origin.indexOf("://");
+  if (schemeEnd === -1)
+    return null;
+  const scheme = origin.slice(0, schemeEnd).toLowerCase();
+  if (scheme !== "http" && scheme !== "https")
+    return null;
+  const remainder = origin.slice(schemeEnd + 3);
+  const pathStart = remainder.search(/[/?#]/u);
+  const authority = pathStart === -1 ? remainder : remainder.slice(0, pathStart);
+  const hostPort = authority.split("@").at(-1)?.trim() ?? "";
+  return hostPort.length > 0 ? hostPort : null;
+}
+function matchTarget(resource) {
+  const raw = resourceValue(resource);
+  const hostPort = resource.kind === "sensitiveData" ? null : originHostPort(resource.origin);
+  return {
+    raw,
+    hostPort: hostPort != null && hostPort !== raw ? hostPort : null
+  };
+}
+function persistedPatternMatches(pattern, target) {
+  if (pattern.includes("://"))
+    return wildcardMatches(pattern, target.raw);
+  if (target.hostPort != null)
+    return wildcardMatches(pattern, target.hostPort);
+  return !target.raw.includes("://") && wildcardMatches(pattern, target.raw);
+}
+function tableContains(table, listName, target) {
+  const values = table[listName];
+  return Array.isArray(values) ? values.some((value) => typeof value === "string" && persistedPatternMatches(value.trim(), target)) : false;
+}
+function existingTable(config, tableName) {
+  if (tableName == null)
+    return null;
+  return record(config[tableName]);
+}
+function writableTable(config, tableName) {
+  const value = config[tableName];
+  if (value == null) {
+    const created = {};
+    config[tableName] = created;
+    return created;
+  }
+  const table = record(value);
+  if (table == null)
+    throw new Error(`browser-use table ${tableName} must be an object`);
+  return table;
+}
+function addStringValue(table, listName, value) {
+  const current = table[listName];
+  if (current == null) {
+    table[listName] = [value];
+    return;
+  }
+  if (!Array.isArray(current)) {
+    throw new Error(`browser-use table key ${listName} must be an array`);
+  }
+  const strings = current.filter((item) => typeof item === "string");
+  if (!strings.includes(value))
+    strings.push(value);
+  table[listName] = strings;
+}
+function removeStringValue(table, listName, value) {
+  const current = table[listName];
+  if (Array.isArray(current))
+    table[listName] = current.filter((item) => item !== value);
+}
+function escapedLiteralPattern(value) {
+  let escaped = "";
+  for (const character of value) {
+    if (character === "*")
+      escaped += "\\*";
+    else if (character === "\\")
+      escaped += "\\\\";
+    else
+      escaped += character;
+  }
+  return escaped;
+}
+function responsePersistenceScope(response) {
+  for (const container of [response.meta, response._meta, response.content]) {
+    const persist = record(container)?.persist;
+    if (persist === "session")
+      return "conversation";
+    if (persist === "always")
+      return "global";
+  }
+  return null;
+}
+function reviewerIsGuardian(response) {
+  const meta = record(response.meta);
+  const alternateMeta = record(response._meta);
+  const reviewer = meta?.[APPROVALS_REVIEWER] ?? alternateMeta?.[APPROVALS_REVIEWER];
+  return reviewer === GUARDIAN_SUBAGENT || reviewer === AUTO_REVIEW;
+}
+async function readTomlConfig(client, path) {
+  if (client == null)
+    return {};
+  return record(await client.config.readToml(path)) ?? {};
+}
+function createOriginSessionPolicy(dependencies) {
+  const now = dependencies.now ?? Date.now;
+  const guardianOriginCache = new Map;
+  function getTurnMetadata() {
+    return record(dependencies.getNodeRepl()?.requestMeta?.["x-codex-turn-metadata"]) ?? undefined;
+  }
+  function getCodexSessionId(metadata = getTurnMetadata()) {
+    if (metadata?.thread_source === "subagent" && typeof metadata.thread_id === "string") {
+      return metadata.thread_id;
+    }
+    return typeof metadata?.session_id === "string" ? metadata.session_id : undefined;
+  }
+  function missingRequiredTurnMetadata() {
+    const metadata = getTurnMetadata();
+    return ["session_id", "turn_id"].filter((propertyName) => typeof metadata?.[propertyName] !== "string");
+  }
+  function assertRequiredTurnMetadata() {
+    const missing = missingRequiredTurnMetadata();
+    if (missing.length !== 0) {
+      throw new Error(`Missing required Codex turn metadata: ${missing.join(", ")}`);
+    }
+  }
+  function formatBrowserName(promptOptions) {
+    const displayName = record(promptOptions)?.elicitationDisplayName;
+    return typeof displayName === "string" ? displayName : "Browser use";
+  }
+  function resolvePrivilegedNodeRepl(promptOptions) {
+    const explicitlyProvided = record(promptOptions)?.privilegedNodeRepl;
+    return explicitlyProvided ?? dependencies.getDefaultPrivilegedNodeRepl();
+  }
+  async function evaluateCodexNetworkPolicy(url, client = dependencies.getDefaultPrivilegedNodeRepl()) {
+    if (client == null)
+      return null;
+    try {
+      const [requirements, config] = await Promise.all([
+        client.config.readRequirements(),
+        client.config.read({
+          cwd: client.cwd ?? dependencies.getNodeRepl()?.cwd ?? null,
+          includeLayers: false
+        })
+      ]);
+      return evaluateMergedNetworkPolicy(mergeCodexNetworkPolicy(requirements, config), url);
+    } catch {
+      return "deny";
+    }
+  }
+  function fallbackConversationId() {
+    const requestMeta = dependencies.getNodeRepl()?.requestMeta;
+    if (requestMeta != null) {
+      for (const key of [
+        "conversation_id",
+        "conversationId",
+        "thread_id",
+        "threadId",
+        "session_id",
+        "sessionId"
+      ]) {
+        const value = requestMeta[key];
+        if (typeof value === "string" && value.trim().length > 0)
+          return value;
+      }
+    }
+    return;
+  }
+  function fallbackTurnIdentity() {
+    const requestMeta = dependencies.getNodeRepl()?.requestMeta;
+    if (requestMeta == null)
+      return;
+    let sessionId;
+    for (const key of ["conversation_id", "thread_id", "session_id"]) {
+      const value = requestMeta[key];
+      if (typeof value === "string" && value.trim().length > 0) {
+        sessionId = value;
+        break;
+      }
+    }
+    let turnId;
+    for (const key of ["turn_id", "turnId"]) {
+      const value = requestMeta[key];
+      if (typeof value === "string" && value.trim().length > 0) {
+        turnId = value;
+        break;
+      }
+    }
+    return sessionId == null || turnId == null ? undefined : { sessionId, turnId };
+  }
+  function currentConversationId() {
+    return getCodexSessionId(getTurnMetadata()) ?? fallbackConversationId();
+  }
+  function currentTurn() {
+    const metadata = getTurnMetadata();
+    const sessionId = getCodexSessionId(metadata);
+    return sessionId != null && typeof metadata?.turn_id === "string" ? { sessionId, turnId: metadata.turn_id } : fallbackTurnIdentity();
+  }
+  function consentQuery(resource) {
+    return {
+      conversationId: currentConversationId(),
+      resource,
+      turn: currentTurn()
+    };
+  }
+  function reconcileGuardianCache(query) {
+    const turn = query.turn;
+    if (turn == null || query.resource.kind !== "origin")
+      return;
+    const cached = guardianOriginCache.get(turn.sessionId);
+    if (cached == null)
+      return;
+    if (cached.expiresAt <= now()) {
+      guardianOriginCache.delete(turn.sessionId);
+      return;
+    }
+    if (cached.turnId !== turn.turnId || cached.origin !== query.resource.origin) {
+      guardianOriginCache.delete(turn.sessionId);
+    }
+  }
+  function guardianCacheApproves(query) {
+    const turn = query.turn;
+    if (turn == null || query.resource.kind !== "origin")
+      return false;
+    const cached = guardianOriginCache.get(turn.sessionId);
+    if (cached == null)
+      return false;
+    if (cached.expiresAt <= now()) {
+      guardianOriginCache.delete(turn.sessionId);
+      return false;
+    }
+    return cached.turnId === turn.turnId && cached.origin === query.resource.origin;
+  }
+  function cacheGuardianOriginApproval(query) {
+    const turn = query.turn;
+    if (turn == null || query.resource.kind !== "origin")
+      return;
+    guardianOriginCache.set(turn.sessionId, {
+      expiresAt: now() + GUARDIAN_CACHE_TTL_MS,
+      origin: query.resource.origin,
+      turnId: turn.turnId
+    });
+  }
+  async function sessionConfig(client, conversationId) {
+    const path = conversationConfigPath(conversationId);
+    return path == null ? {} : readTomlConfig(client, path);
+  }
+  async function queryDecision(query, client) {
+    const networkDecision = query.resource.kind === "origin" ? await evaluateCodexNetworkPolicy(query.resource.origin, client) : null;
+    try {
+      const globalConfig = await readTomlConfig(client, dependencies.globalConfigPath);
+      const tableName = approvalTableName(query.resource);
+      const conversationConfig = tableName == null ? {} : await sessionConfig(client, query.conversationId);
+      const globalTable = existingTable(globalConfig, tableName);
+      const conversationTable = existingTable(conversationConfig, tableName);
+      const target = matchTarget(query.resource);
+      reconcileGuardianCache(query);
+      if (conversationTable != null && tableContains(conversationTable, DENIED, target)) {
+        return {
+          decision: "deny",
+          scope: "conversation",
+          source: "browser-use-persisted-state"
+        };
+      }
+      if (globalTable != null && tableContains(globalTable, DENIED, target)) {
+        return {
+          decision: "deny",
+          scope: "global",
+          source: "browser-use-persisted-state"
+        };
+      }
+      if (networkDecision === "deny") {
+        return {
+          decision: "deny",
+          scope: "global",
+          source: "codex-network-policy"
+        };
+      }
+      if (guardianCacheApproves(query)) {
+        return {
+          decision: "approve",
+          scope: "turn",
+          source: "guardian-origin-cache"
+        };
+      }
+      if (conversationTable != null && tableContains(conversationTable, ALLOWED, target)) {
+        return {
+          decision: "approve",
+          scope: "conversation",
+          source: "browser-use-persisted-state"
+        };
+      }
+      if (globalTable != null && tableContains(globalTable, ALLOWED, target)) {
+        return {
+          decision: "approve",
+          scope: "global",
+          source: "browser-use-persisted-state"
+        };
+      }
+      return approvalMode(globalConfig, query.resource) === NEVER_ASK ? {
+        decision: "approve",
+        scope: "global",
+        source: "browser-use-persisted-state"
+      } : null;
+    } catch {
+      return null;
+    }
+  }
+  async function queryOrigin(origin, promptOptions) {
+    const client = resolvePrivilegedNodeRepl(promptOptions);
+    if (BROWSER_CLIENT_SECURITY_POLICY.originAuthorization === "disabled") {
+      return client == null || await evaluateCodexNetworkPolicy(origin, client) === "deny" ? { decision: "deny", scope: "global", source: "codex-network-policy" } : {
+        decision: "approve",
+        scope: "global",
+        source: "browser-use-runtime-policy"
+      };
+    }
+    return queryDecision(consentQuery({ kind: "origin", origin }), client);
+  }
+  async function queryFileTransfer(transferKind, origin, promptOptions) {
+    return queryDecision(consentQuery({ kind: "fileTransfer", origin, transferKind }), resolvePrivilegedNodeRepl(promptOptions));
+  }
+  async function queryFullCdp(origin, promptOptions) {
+    const originDecision = await queryOrigin(origin, promptOptions);
+    return originDecision?.decision === "deny" ? originDecision : queryDecision(consentQuery({ kind: "fullCdp", origin }), resolvePrivilegedNodeRepl(promptOptions));
+  }
+  async function queryHistory(promptOptions) {
+    return queryDecision(consentQuery({ kind: "sensitiveData", sensitiveData: BROWSING_HISTORY }), resolvePrivilegedNodeRepl(promptOptions));
+  }
+  async function isAutomaticReviewDisabled(promptOptions) {
+    try {
+      return (await readTomlConfig(resolvePrivilegedNodeRepl(promptOptions), dependencies.globalConfigPath))[DISABLE_AUTO_REVIEW] === true;
+    } catch {
+      return false;
+    }
+  }
+  function persistencePath(scope, conversationId) {
+    return scope === "global" ? dependencies.globalConfigPath : conversationConfigPath(conversationId);
+  }
+  async function writeDecision(client, query, scope, decision) {
+    const path = persistencePath(scope, query.conversationId);
+    if (path == null)
+      return;
+    const config = await readTomlConfig(client, path);
+    const tableName = approvalTableName(query.resource);
+    if (tableName == null)
+      return;
+    const table = writableTable(config, tableName);
+    const [destination, opposite] = decision === "approve" ? [ALLOWED, DENIED] : [DENIED, ALLOWED];
+    const raw = resourceValue(query.resource);
+    const escaped = escapedLiteralPattern(raw);
+    removeStringValue(table, opposite, raw);
+    if (escaped !== raw)
+      removeStringValue(table, opposite, escaped);
+    addStringValue(table, destination, escaped);
+    await client.config.writeToml(path, config);
+  }
+  async function persistResponse(query, allowGuardianCache, response, client) {
+    try {
+      if (allowGuardianCache && reviewerIsGuardian(response)) {
+        if (response.action === "accept")
+          cacheGuardianOriginApproval(query);
+        return;
+      }
+      if (client == null)
+        return;
+      const decision = response.action === "accept" ? "approve" : response.action === "decline" ? "deny" : null;
+      if (decision == null || approvalTableName(query.resource) == null)
+        return;
+      const scope = responsePersistenceScope(response) ?? (query.resource.kind === "origin" || query.resource.kind === "fullCdp" ? "conversation" : null);
+      if (scope != null)
+        await writeDecision(client, query, scope, decision);
+    } catch {}
+  }
+  async function persistOriginResponse(origin, response, promptOptions) {
+    if (BROWSER_CLIENT_SECURITY_POLICY.originAuthorization === "disabled")
+      return;
+    await persistResponse(consentQuery({ kind: "origin", origin }), true, response, resolvePrivilegedNodeRepl(promptOptions));
+  }
+  async function persistFileTransferResponse(transferKind, origin, response, promptOptions) {
+    await persistResponse(consentQuery({ kind: "fileTransfer", origin, transferKind }), false, response, resolvePrivilegedNodeRepl(promptOptions));
+  }
+  async function persistFullCdpResponse(origin, response, promptOptions) {
+    await persistResponse(consentQuery({ kind: "fullCdp", origin }), false, response, resolvePrivilegedNodeRepl(promptOptions));
+  }
+  async function persistHistoryResponse(response, promptOptions) {
+    const client = resolvePrivilegedNodeRepl(promptOptions);
+    if (response.action !== "accept" || responsePersistenceScope(response) !== "global" || client == null) {
+      return;
+    }
+    try {
+      const config = await readTomlConfig(client, dependencies.globalConfigPath);
+      config[HISTORY_APPROVAL_MODE] = NEVER_ASK;
+      await client.config.writeToml(dependencies.globalConfigPath, config);
+    } catch {}
+  }
+  async function requestOriginConsent(origin, promptOptions) {
+    const browserName = formatBrowserName(promptOptions);
+    const existingDecision = await queryOrigin(origin, promptOptions);
+    if (existingDecision?.decision === "approve")
+      return;
+    if (existingDecision?.decision === "deny") {
+      const reason = existingDecision.source === "codex-network-policy" ? `${browserName} cannot access ${origin} because enterprise network policy blocks it.` : `The user has requested that ${origin} should not be used.`;
+      throw new Error(dependencies.formatSecurityError(reason));
+    }
+    const elicitation = dependencies.getElicitationProvider();
+    if (elicitation == null) {
+      throw new Error(dependencies.formatSecurityError(`${browserName} encountered an error attempting to request permission to access ${origin}. Please use another source or try another approach.`));
+    }
+    const automaticReviewDisabled = await isAutomaticReviewDisabled(promptOptions);
+    const response = await elicitation({
+      message: `Allow ${browserName} to access ${origin}?`,
+      meta: {
+        codex_approval_kind: "mcp_tool_call",
+        ...automaticReviewDisabled ? {} : { codex_request_type: "approval_request" },
+        connector_id: "browser-use",
+        connector_name: browserName,
+        persist: "always",
+        tool_name: "access_browser_origin",
+        tool_title: "Access browser origin",
+        tool_params: { origin },
+        tool_params_display: [],
+        origin
+      }
+    });
+    await persistOriginResponse(origin, response, promptOptions);
+    if (response.action !== "accept") {
+      throw new Error(dependencies.formatSecurityError(`The user has requested that ${origin} should not be used.`));
+    }
+  }
+  async function requestBrowserHistoryConsent(parameters, promptOptions) {
+    const browserName = formatBrowserName(promptOptions);
+    if ((await queryHistory(promptOptions))?.decision === "approve")
+      return;
+    const elicitation = dependencies.getElicitationProvider();
+    if (elicitation == null) {
+      throw new Error(`${browserName} encountered an error attempting to request permission to read browsing history. Please use another source or try another approach.`);
+    }
+    const response = await elicitation({
+      message: `Allow ${browserName} to read your browsing history?`,
+      meta: {
+        codex_approval_kind: "mcp_tool_call",
+        connector_id: "browser-use",
+        connector_name: browserName,
+        persist: "always",
+        tool_params: parameters,
+        sensitive_data: BROWSING_HISTORY
+      }
+    });
+    await persistHistoryResponse(response, promptOptions);
+    if (response.action !== "accept") {
+      throw new Error("The user has requested that browsing history not be read.");
+    }
+  }
+  return {
+    assertRequiredTurnMetadata,
+    evaluateCodexNetworkPolicy,
+    extractBrowserOrigin,
+    extractHttpOrigin,
+    fileUrlWithoutSearchAndHash,
+    formatBrowserName,
+    getCodexSessionId,
+    getTurnMetadata,
+    isAutomaticReviewDisabled,
+    isLocalhostHostname,
+    missingRequiredTurnMetadata,
+    persistFileTransferResponse,
+    persistFullCdpResponse,
+    persistHistoryResponse,
+    persistOriginResponse,
+    parseBrowserUrl,
+    queryFileTransfer,
+    queryFullCdp,
+    queryHistory,
+    queryOrigin,
+    requestBrowserHistoryConsent,
+    requestOriginConsent,
+    resolvePrivilegedNodeRepl,
+    httpOriginFromUrl
+  };
+}
+
+// browser-runtime.generated.js
 import { AsyncLocalStorage as z5 } from "node:async_hooks";
 import { Buffer as Ul } from "node:buffer";
 import { Buffer as vh } from "node:buffer";
@@ -19625,589 +20406,38 @@ var xT = y("browser_user_open_tabs", async (t23, e) => ({
     ...n.tabGroup == null ? {} : { tabGroup: n.tabGroup }
   }))
 }));
-function ze() {
-  return globalThis.nodeRepl?.requestMeta?.["x-codex-turn-metadata"];
-}
-function Yt(t23 = ze()) {
-  if (t23?.thread_source === "subagent" && typeof t23.thread_id == "string")
-    return t23.thread_id;
-  let e = t23?.session_id;
-  return typeof e == "string" ? e : undefined;
-}
-function X8() {
-  let t23 = ze();
-  return ["session_id", "turn_id"].filter((r) => typeof t23?.[r] != "string");
-}
-function ST() {
-  let t23 = X8();
-  if (t23.length !== 0)
-    throw new Error(`Missing required Codex turn metadata: ${t23.join(", ")}`);
-}
-function be(t23) {
-  return t23?.elicitationDisplayName ?? "Browser use";
-}
-async function TT(t23, e = Re()) {
-  return Q8(t23, e);
-}
-async function Q8(t23, e) {
-  if (e == null)
-    return null;
-  try {
-    let [r, n] = await Promise.all([
-      e.config.readRequirements(),
-      e.config.read({ cwd: e.cwd ?? globalThis.nodeRepl?.cwd ?? null, includeLayers: false })
-    ]);
-    return n5(e5(r, n), t23);
-  } catch {
-    return "deny";
-  }
-}
-function e5(t23, e) {
-  let r = { enabled: null, allowedDomains: [], deniedDomains: [], hardDenyAllowlistMisses: false }, n = Dn(Dn(t23.requirements)?.network);
-  n != null && (vT(r, n), r.hardDenyAllowlistMisses = yh(n, "managedAllowedDomainsOnly", "managed_allowed_domains_only") ?? false);
-  let o = t52(e);
-  return r.hardDenyAllowlistMisses ? o != null && (yh(o, "enabled") === false && (r.enabled = false), r5(r, o)) : o != null && vT(r, o), r;
-}
-function t52(t23) {
-  let e = Dn(t23.config) ?? t23, r = u5(e, "default_permissions", "defaultPermissions");
-  return r == null ? null : Dn(Dn(Dn(e.permissions)?.[r])?.network) ?? null;
-}
-function vT(t23, e) {
-  let r = yh(e, "enabled");
-  r != null && (!r || t23.enabled == null) && (t23.enabled = r);
-  let [n, o] = IT(e);
-  bh(t23.allowedDomains, n), bh(t23.deniedDomains, o);
-}
-function r5(t23, e) {
-  let [, r] = IT(e);
-  bh(t23.deniedDomains, r);
-}
-function IT(t23) {
-  let e = Dn(t23.domains);
-  if (e != null) {
-    let r = [], n = [];
-    for (let [o, i] of Object.entries(e))
-      i === "allow" ? r.push(o) : i === "deny" && n.push(o);
-    return [r, n];
-  }
-  return [CT(t23, "allowedDomains", "allowed_domains"), CT(t23, "deniedDomains", "denied_domains")];
-}
-function n5(t23, e) {
-  let r = o5(e);
-  return r == null ? null : t23.enabled === false || ET(t23.deniedDomains, r) ? "deny" : !t23.hardDenyAllowlistMisses || ET(t23.allowedDomains, r) ? null : "deny";
-}
-function o5(t23) {
-  try {
-    let e = new URL(t23);
-    return e.protocol !== "http:" && e.protocol !== "https:" ? null : xu(e.host);
-  } catch {
-    return null;
-  }
-}
-function ET(t23, e) {
-  return t23.some((r) => i5(r, e));
-}
-function i5(t23, e) {
-  let r = s5(t23), n = xu(e);
-  if (r.length === 0 || n.length === 0)
-    return false;
-  if (r === "*")
-    return true;
-  if (r.startsWith("**.")) {
-    let o = r.slice(3);
-    return n === o || n.endsWith(`.${o}`);
-  }
-  return a5(r, n);
-}
-function s5(t23) {
-  let e = t23.trim();
-  return e === "*" ? "*" : e.startsWith("**.") ? `**.${xu(e.slice(3))}` : e.startsWith("*.") ? `*.${xu(e.slice(2))}` : xu(e);
-}
-function xu(t23) {
-  let e = t23.trim();
-  if (e.startsWith("[")) {
-    let r = e.indexOf("]");
-    if (r !== -1)
-      return gh(e.slice(1, r));
-  }
-  return (e.match(/:/g) ?? []).length === 1 ? gh(e.split(":")[0] ?? "") : gh(e);
-}
-function gh(t23) {
-  return t23.toLowerCase().replace(/\.+$/u, "");
-}
-function a5(t23, e) {
-  let n = `^${t23.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*")}$`;
-  return new RegExp(n, "u").test(e);
-}
-function bh(t23, e) {
-  for (let r of e)
-    t23.some((n) => n.toLowerCase() === r.toLowerCase()) || t23.push(r);
-}
-function Dn(t23) {
-  return t23 == null || typeof t23 != "object" || Array.isArray(t23) ? null : t23;
-}
-function yh(t23, ...e) {
-  for (let r of e)
-    if (typeof t23[r] == "boolean")
-      return t23[r];
-}
-function u5(t23, ...e) {
-  for (let r of e)
-    if (typeof t23[r] == "string")
-      return t23[r].trim() || null;
-  return null;
-}
-function CT(t23, ...e) {
-  for (let r of e) {
-    let n = t23[r];
-    if (Array.isArray(n))
-      return n.filter((o) => typeof o == "string").map((o) => o.trim()).filter((o) => o.length > 0);
-  }
-  return [];
-}
-function Zt(t23) {
-  return t23?.privilegedNodeRepl ?? Re();
-}
-var c5 = "approval_mode";
-var PT = "history_approval_mode";
-var DT = "never_ask";
-var l5 = "disable_auto_review";
-var d5 = "origins";
-var p5 = "full_cdp";
-var f5 = "downloads";
-var m5 = "uploads";
-var kl = "allowed";
-var Pl = "denied";
-var h5 = "download_approval_mode";
-var g5 = "upload_approval_mode";
-var b5 = "browsing_history";
-var RT = "approvals_reviewer";
-var y5 = "guardian_subagent";
-var _5 = "auto_review";
-var w5 = 300000;
-var vi = new Map;
-async function wh(t23, e) {
-  return Nl({ conversationId: On(), resource: { kind: "origin", origin: t23 }, turn: Nn() }, Zt(e));
-}
-async function Dl(t23, e, r) {
-  return Nl({
-    conversationId: On(),
-    resource: { kind: "fileTransfer", origin: e, transferKind: t23 },
-    turn: Nn()
-  }, Zt(r));
-}
-async function OT(t23, e) {
-  let r = await wh(t23, e);
-  return r?.decision === "deny" ? r : Nl({ conversationId: On(), resource: { kind: "fullCdp", origin: t23 }, turn: Nn() }, Zt(e));
-}
-async function NT(t23) {
-  return Nl({ conversationId: On(), resource: { kind: "sensitiveData", sensitiveData: b5 }, turn: Nn() }, Zt(t23));
-}
-async function BT(t23) {
-  try {
-    return (await Su(Zt(t23), wr))[l5] === true;
-  } catch {
-    return false;
-  }
-}
-async function MT(t23, e, r) {
-  await xh({ conversationId: On(), resource: { kind: "origin", origin: t23 }, turn: Nn() }, true, e, Zt(r));
-}
-async function Ol(t23, e, r, n) {
-  await xh({
-    conversationId: On(),
-    resource: { kind: "fileTransfer", origin: e, transferKind: t23 },
-    turn: Nn()
-  }, false, r, Zt(n));
-}
-async function FT(t23, e, r) {
-  await xh({ conversationId: On(), resource: { kind: "fullCdp", origin: t23 }, turn: Nn() }, false, e, Zt(r));
-}
-async function LT(t23, e) {
-  let r = Zt(e);
-  if (!(t23.action !== "accept" || UT(t23) !== "global" || r == null))
-    try {
-      let n = await Su(r, wr);
-      n[PT] = DT, await r.config.writeToml(wr, n);
-    } catch {}
-}
-async function Nl(t23, e) {
-  let r = null;
-  t23.resource.kind === "origin" && (r = await TT(t23.resource.origin, e));
-  try {
-    let n = await Su(e, wr), o = C5(n, t23.resource), i = Sh(t23.resource), s = i == null ? {} : await E5(e, t23.conversationId), a = AT(n, i), u = AT(s, i), c = U5(t23.resource);
-    return k5(t23), u != null && Rl(u, Pl, c) ? { decision: "deny", scope: "conversation", source: "browser-use-persisted-state" } : a != null && Rl(a, Pl, c) ? { decision: "deny", scope: "global", source: "browser-use-persisted-state" } : r === "deny" ? { decision: "deny", scope: "global", source: "codex-network-policy" } : P5(t23) ? { decision: "approve", scope: "turn", source: "guardian-origin-cache" } : u != null && Rl(u, kl, c) ? {
-      decision: "approve",
-      scope: "conversation",
-      source: "browser-use-persisted-state"
-    } : a != null && Rl(a, kl, c) ? { decision: "approve", scope: "global", source: "browser-use-persisted-state" } : o === "never_ask" ? {
-      decision: "approve",
-      scope: "global",
-      source: "browser-use-persisted-state"
-    } : null;
-  } catch {
-    return null;
-  }
-}
-async function xh(t23, e, r, n) {
-  try {
-    if (x5(t23, e, r))
-      return;
-    await S5(t23, r, n);
-  } catch {}
-}
-function x5(t23, e, r) {
-  return O5(e, r) ? (r.action === "accept" && D5(t23), true) : false;
-}
-async function S5(t23, e, r) {
-  if (r == null)
-    return;
-  let n = e.action === "accept" ? "approve" : e.action === "decline" ? "deny" : null;
-  if (n == null || !T5(t23.resource))
-    return;
-  let o = UT(e) ?? (I5(t23.resource) ? "conversation" : null);
-  o != null && await v5(r, t23, o, n);
-}
-async function v5(t23, e, r, n) {
-  let o = R5(r, e.conversationId);
-  if (o == null)
-    return;
-  let i = await Su(t23, o), s = Sh(e.resource);
-  if (s == null)
-    return;
-  let a = M5(i, s), [u, c] = n === "approve" ? [kl, Pl] : [Pl, kl], d = q5(Al(e.resource));
-  kT(a, c, Al(e.resource)), d !== Al(e.resource) && kT(a, c, d), F5(a, u, d), await t23.config.writeToml(o, i);
-}
-async function Su(t23, e) {
-  if (t23 == null)
-    return {};
-  let r = await t23.config.readToml(e);
-  return Bl(r) ? r : {};
-}
-async function E5(t23, e) {
-  let r = jT(e);
-  return r == null ? {} : Su(t23, r);
-}
-function On() {
-  let t23 = ze(), e = Yt(t23);
-  return typeof e == "string" ? e : N5(globalThis.nodeRepl?.requestMeta);
-}
-function Nn() {
-  let t23 = ze(), e = Yt(t23);
-  return typeof e == "string" && typeof t23?.turn_id == "string" ? { sessionId: e, turnId: t23.turn_id } : B5(globalThis.nodeRepl?.requestMeta);
-}
-function C5(t23, e) {
-  let r;
-  switch (e.kind) {
-    case "origin":
-      r = c5;
-      break;
-    case "fileTransfer":
-      r = e.transferKind === "download" ? h5 : g5;
-      break;
-    case "fullCdp":
-      return "always_ask";
-    case "sensitiveData":
-      r = PT;
-      break;
-  }
-  return t23[r] === DT ? "never_ask" : "always_ask";
-}
-function Sh(t23) {
-  switch (t23.kind) {
-    case "origin":
-      return d5;
-    case "fileTransfer":
-      return t23.transferKind === "download" ? f5 : m5;
-    case "fullCdp":
-      return p5;
-    case "sensitiveData":
-      return null;
-  }
-}
-function Al(t23) {
-  switch (t23.kind) {
-    case "origin":
-    case "fileTransfer":
-    case "fullCdp":
-      return t23.origin;
-    case "sensitiveData":
-      return t23.sensitiveData;
-  }
-}
-function T5(t23) {
-  return Sh(t23) != null;
-}
-function I5(t23) {
-  return t23.kind === "origin" || t23.kind === "fullCdp";
-}
-function UT(t23) {
-  for (let e of [t23.meta, t23._meta, t23.content]) {
-    let r = Bl(e) ? e.persist : undefined;
-    if (r === "session")
-      return "conversation";
-    if (r === "always")
-      return "global";
-  }
-  return null;
-}
-function R5(t23, e) {
-  return t23 === "global" ? wr : jT(e);
-}
-function jT(t23) {
-  return A5(t23) ? `browser/sessions/${t23}.toml` : null;
-}
-function A5(t23) {
-  return typeof t23 == "string" && t23.length > 0 && t23.length <= 128 && /^[A-Za-z0-9_-]+$/u.test(t23);
-}
-function k5(t23) {
-  let e = t23.turn;
-  if (e == null || t23.resource.kind !== "origin")
-    return;
-  let r = vi.get(e.sessionId);
-  if (r != null) {
-    if (r.expiresAt <= Date.now()) {
-      vi.delete(e.sessionId);
-      return;
-    }
-    (r.turnId !== e.turnId || r.origin !== t23.resource.origin) && vi.delete(e.sessionId);
-  }
-}
-function P5(t23) {
-  let e = t23.turn;
-  if (e == null || t23.resource.kind !== "origin")
-    return false;
-  let r = vi.get(e.sessionId);
-  return r == null ? false : r.expiresAt <= Date.now() ? (vi.delete(e.sessionId), false) : r.turnId === e.turnId && r.origin === t23.resource.origin;
-}
-function D5(t23) {
-  let e = t23.turn;
-  e == null || t23.resource.kind !== "origin" || vi.set(e.sessionId, {
-    expiresAt: Date.now() + w5,
-    origin: t23.resource.origin,
-    turnId: e.turnId
-  });
-}
-function O5(t23, e) {
-  if (!t23)
-    return false;
-  let r = e.meta?.[RT] ?? e._meta?.[RT];
-  return r === y5 || r === _5;
-}
-function N5(t23) {
-  if (t23 != null)
-    for (let e of [
-      "conversation_id",
-      "conversationId",
-      "thread_id",
-      "threadId",
-      "session_id",
-      "sessionId"
-    ]) {
-      let r = t23[e];
-      if (typeof r == "string" && r.trim().length > 0)
-        return r;
-    }
-}
-function B5(t23) {
-  if (t23 == null)
-    return;
-  let e;
-  for (let n of ["conversation_id", "thread_id", "session_id"]) {
-    let o = t23[n];
-    if (typeof o == "string" && o.trim().length > 0) {
-      e = o;
-      break;
-    }
-  }
-  let r;
-  for (let n of ["turn_id", "turnId"]) {
-    let o = t23[n];
-    if (typeof o == "string" && o.trim().length > 0) {
-      r = o;
-      break;
-    }
-  }
-  if (!(e == null || r == null))
-    return { sessionId: e, turnId: r };
-}
-function AT(t23, e) {
-  if (e == null)
-    return null;
-  let r = t23[e];
-  return Bl(r) ? r : null;
-}
-function M5(t23, e) {
-  let r = t23[e];
-  if (r == null) {
-    let n = {};
-    return t23[e] = n, n;
-  }
-  if (!Bl(r))
-    throw new Error(`browser-use table ${e} must be an object`);
-  return r;
-}
-function F5(t23, e, r) {
-  let n = t23[e];
-  if (n == null) {
-    t23[e] = [r];
-    return;
-  }
-  if (!Array.isArray(n))
-    throw new Error(`browser-use table key ${e} must be an array`);
-  let o = n.filter((i) => typeof i == "string");
-  o.includes(r) || o.push(r), t23[e] = o;
-}
-function kT(t23, e, r) {
-  let n = t23[e];
-  Array.isArray(n) && (t23[e] = n.filter((o) => o !== r));
-}
-function Rl(t23, e, r) {
-  let n = t23[e];
-  return Array.isArray(n) ? n.some((o) => typeof o == "string" && L5(o.trim(), r)) : false;
-}
-function L5(t23, e) {
-  return t23.includes("://") ? _h(t23, e.raw) : e.hostPort != null ? _h(t23, e.hostPort) : !e.raw.includes("://") && _h(t23, e.raw);
-}
-function U5(t23) {
-  let e = Al(t23), r = t23.kind === "origin" || t23.kind === "fileTransfer" || t23.kind === "fullCdp" ? j5(t23.origin) : null;
-  return { raw: e, hostPort: r != null && r !== e ? r : null };
-}
-function j5(t23) {
-  let e = t23.indexOf("://");
-  if (e === -1)
-    return null;
-  let r = t23.slice(0, e);
-  if (r.toLowerCase() !== "http" && r.toLowerCase() !== "https")
-    return null;
-  let n = t23.slice(e + 3), o = n.search(/[/?#]/u), s = (o === -1 ? n : n.slice(0, o)).split("@").at(-1)?.trim() ?? "";
-  return s.length > 0 ? s : null;
-}
-function q5(t23) {
-  let e = "";
-  for (let r of t23)
-    r === "*" ? e += "\\*" : r === "\\" ? e += "\\\\" : e += r;
-  return e;
-}
-function _h(t23, e) {
-  let r = $5(t23);
-  if (r.length === 1)
-    return r[0] === e;
-  let [n = ""] = r, o = e;
-  if (n.length > 0) {
-    if (!o.startsWith(n))
-      return false;
-    o = o.slice(n.length);
-  }
-  for (let s of r.slice(1, -1)) {
-    if (s.length === 0)
-      continue;
-    let a = o.indexOf(s);
-    if (a === -1)
-      return false;
-    o = o.slice(a + s.length);
-  }
-  let i = r.at(-1) ?? "";
-  return i.length === 0 || o.endsWith(i);
-}
-function $5(t23) {
-  let e = [], r = "";
-  for (let n = 0;n < t23.length; n += 1) {
-    let o = t23[n];
-    if (o === "*") {
-      e.push(r), r = "";
-      continue;
-    }
-    if (o === "\\") {
-      let i = t23[n + 1];
-      if (i === "*" || i === "\\") {
-        r += i, n += 1;
-        continue;
-      }
-    }
-    r += o;
-  }
-  return e.push(r), e;
-}
-function Bl(t23) {
-  return typeof t23 == "object" && t23 != null && !Array.isArray(t23);
-}
-async function qT(t23, e, r) {
-  let n = be(r), o = await wh(e, r);
-  if (o?.decision === "approve")
-    return;
-  if (o?.decision === "deny") {
-    let u = o.source === "codex-network-policy" ? `${n} cannot access ${e} because enterprise network policy blocks it.` : `The user has requested that ${e} should not be used.`;
-    throw new Error(ne(u));
-  }
-  let i = t23();
-  if (i == null)
-    throw new Error(ne(`${n} encountered an error attempting to request permission to access ${e}. Please use another source or try another approach.`));
-  let s = await BT(r), a = await i({
-    message: `Allow ${n} to access ${e}?`,
-    meta: {
-      codex_approval_kind: "mcp_tool_call",
-      ...s ? {} : { codex_request_type: "approval_request" },
-      connector_id: "browser-use",
-      connector_name: n,
-      persist: "always",
-      tool_name: "access_browser_origin",
-      tool_title: "Access browser origin",
-      tool_params: { origin: e },
-      tool_params_display: [],
-      origin: e
-    }
-  });
-  if (await MT(e, a, r), a.action !== "accept")
-    throw new Error(ne(`The user has requested that ${e} should not be used.`));
-}
-async function $T(t23, e, r) {
-  let n = be(r);
-  if ((await NT(r))?.decision === "approve")
-    return;
-  let i = t23();
-  if (i == null)
-    throw new Error(`${n} encountered an error attempting to request permission to read browsing history. Please use another source or try another approach.`);
-  let s = await i({
-    message: `Allow ${n} to read your browsing history?`,
-    meta: {
-      codex_approval_kind: "mcp_tool_call",
-      connector_id: "browser-use",
-      connector_name: n,
-      persist: "always",
-      tool_params: e,
-      sensitive_data: "browsing_history"
-    }
-  });
-  if (await LT(s, r), s.action !== "accept")
-    throw new Error("The user has requested that browsing history not be read.");
-}
-function Oe(t23) {
-  let e = zT(t23);
-  return e == null ? null : e.protocol === "file:" ? W5(e) : HT(e);
-}
-function WT(t23) {
-  return HT(zT(t23));
-}
-function zT(t23) {
-  if (typeof t23 != "string" || t23.trim().length === 0)
-    return null;
-  try {
-    return new URL(t23);
-  } catch {
-    return null;
-  }
-}
-function HT(t23) {
-  return t23 == null || t23.protocol !== "http:" && t23.protocol !== "https:" ? null : t23.origin;
-}
-function W5(t23) {
-  return t23.search = "", t23.hash = "", t23.href;
-}
-function VT(t23) {
-  let e = t23.toLowerCase();
-  return e === "localhost" || e.endsWith(".localhost") || e === "127.0.0.1" || e === "[::1]" || e === "::1";
-}
+var {
+  assertRequiredTurnMetadata: ST,
+  evaluateCodexNetworkPolicy: TT,
+  extractBrowserOrigin: Oe,
+  extractHttpOrigin: WT,
+  fileUrlWithoutSearchAndHash: W5,
+  formatBrowserName: be,
+  getCodexSessionId: Yt,
+  getTurnMetadata: ze,
+  isAutomaticReviewDisabled: BT,
+  isLocalhostHostname: VT,
+  missingRequiredTurnMetadata: X8,
+  persistFileTransferResponse: Ol,
+  persistFullCdpResponse: FT,
+  persistHistoryResponse: LT,
+  persistOriginResponse: MT,
+  parseBrowserUrl: zT,
+  queryFileTransfer: Dl,
+  queryFullCdp: OT,
+  queryHistory: NT,
+  queryOrigin: wh,
+  requestBrowserHistoryConsent: $T,
+  requestOriginConsent: qT,
+  resolvePrivilegedNodeRepl: Zt,
+  httpOriginFromUrl: HT
+} = createOriginSessionPolicy({
+  formatSecurityError: ne,
+  getDefaultPrivilegedNodeRepl: Re,
+  getElicitationProvider: () => ts(),
+  getNodeRepl: () => globalThis.nodeRepl,
+  globalConfigPath: wr
+});
 var GT = new z5;
 function KT(t23, e) {
   let r = { elapsedElicitationMs: 0, startedAt: performance.now() };
@@ -28834,7 +29064,7 @@ function rp(t26) {
   return tP[e].bypassedSecurityChecks.has(t26);
 }
 var RH = new __BossSiteStatusPolicy({
-  getEnvironment: () => globalThis.nodeRepl?.env ?? {},
+  getEnvironment: () => siteStatusEnvironment(globalThis.nodeRepl?.env ?? {}),
   getFetch: () => Re()?.fetch,
   getTurnMetadata: ze
 });
@@ -28932,10 +29162,10 @@ var np = createBrowserSecurityClass({
   isNavigationUrlAllowed: mE,
   isOperationWithoutUserConsent: er,
   isSecurityCheckBypassed: rp,
-  requestBrowserHistory: async (parameters, promptOptions) => await $T(ts, parameters, promptOptions),
+  requestBrowserHistory: async (parameters, promptOptions) => await $T(parameters, promptOptions),
   requestFileTransfer: async (transferKind, currentUrl, promptOptions) => await Yk(ts, transferKind, currentUrl, promptOptions),
   requestFullCdp: async (url, promptOptions) => await Zk(ts, url, promptOptions),
-  requestOriginConsent: async (origin, promptOptions) => await qT(ts, origin, promptOptions),
+  requestOriginConsent: async (origin, promptOptions) => await qT(origin, promptOptions),
   requestPageAssetDownload: async (pageUrl, promptOptions) => await Xk(ts, pageUrl, promptOptions),
   requestPageAssetFallbackFetch: async (pageUrl, assetUrl, promptOptions) => await Qk(ts, pageUrl, assetUrl, promptOptions)
 });

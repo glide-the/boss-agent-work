@@ -100,6 +100,9 @@ function verifyStandalone({
   expectIncludes("site status default-off switch", siteStatusPolicySource, "BROWSER_USE_SITE_STATUS_CHECK_ENABLED");
   expectIncludes("site status local base switch", siteStatusPolicySource, "BROWSER_USE_SITE_STATUS_BASE_URL");
   expectIncludes("origin authorization remains", browserClientSource, "ensureUrlOriginConsentAllowed");
+  expectIncludes("site status runtime disabled", browserClientSource, 'siteStatus: "disabled"');
+  expectIncludes("origin authorization disabled", browserClientSource, 'originAuthorization: "disabled"');
+  expectIncludes("origin runtime policy", browserClientSource, "browser-use-runtime-policy");
   expectIncludes("file authorization remains", browserClientSource, "ensureCurrentTabFileTransferAllowed");
   const installerHostNames = installSource.match(/com\.openai\.codexextension(?:\.dev|\.internal)?/gu) ?? [];
   const extensionHostNames = backgroundSource.match(/com\.openai\.codexextension(?:\.dev|\.internal)?/gu) ?? [];

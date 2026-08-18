@@ -49,18 +49,25 @@ function replaceProcessShim(source) {
   const start = source.indexOf(startAnchor);
   const endStart = source.indexOf(endAnchor, start);
   if (start < 0 || endStart < 0) {
-    throw new Error("Process shim anchors were not found in the verified input.");
+    throw new Error(
+      "Process shim anchors were not found in the verified input.",
+    );
   }
   const end = endStart + endAnchor.length;
   const replacement = [
     'import { installProcessShim as __installProcessShim, processShim as process } from "./runtime/process-shim.ts";',
     'import { createBrowserSecurityClass as __createBrowserSecurityClass } from "./security/browser-security.ts";',
+    'import { siteStatusEnvironment as __siteStatusEnvironment } from "./security/policy-config.ts";',
     'import { createDisplay as DP, createNodeReplDisplayBridge as NG } from "./runtime/node-repl-display.ts";',
     "__installProcessShim();",
   ].join("\n");
   return {
     source: `${source.slice(0, start)}${replacement}${source.slice(end)}`,
-    mapping: { inputStart: start, inputEnd: end, classification: "reconstructed" },
+    mapping: {
+      inputStart: start,
+      inputEnd: end,
+      classification: "reconstructed",
+    },
   };
 }
 
@@ -79,7 +86,9 @@ function replaceFormattedNodeReplDisplay(source, rawInput) {
   const bridgeStart = withoutDisplay.indexOf(bridgeStartAnchor);
   const exportStart = withoutDisplay.indexOf(exportAnchor, bridgeStart);
   if (bridgeStart < 0 || exportStart < 0) {
-    throw new Error("Formatted node_repl display bridge anchors were not found.");
+    throw new Error(
+      "Formatted node_repl display bridge anchors were not found.",
+    );
   }
   const transformed = `${withoutDisplay.slice(0, bridgeStart)}${withoutDisplay.slice(exportStart)}`;
 
@@ -141,24 +150,29 @@ function replaceFormattedBrowserSecurity(source, rawInput) {
     "  isNavigationUrlAllowed: mE,",
     "  isOperationWithoutUserConsent: er,",
     "  isSecurityCheckBypassed: rp,",
-    "  requestBrowserHistory: async (parameters, promptOptions) => await $T(ts, parameters, promptOptions),",
+    "  requestBrowserHistory: async (parameters, promptOptions) => await $T(parameters, promptOptions),",
     "  requestFileTransfer: async (transferKind, currentUrl, promptOptions) => await Yk(ts, transferKind, currentUrl, promptOptions),",
     "  requestFullCdp: async (url, promptOptions) => await Zk(ts, url, promptOptions),",
-    "  requestOriginConsent: async (origin, promptOptions) => await qT(ts, origin, promptOptions),",
+    "  requestOriginConsent: async (origin, promptOptions) => await qT(origin, promptOptions),",
     "  requestPageAssetDownload: async (pageUrl, promptOptions) => await Xk(ts, pageUrl, promptOptions),",
     "  requestPageAssetFallbackFetch: async (pageUrl, assetUrl, promptOptions) => await Qk(ts, pageUrl, assetUrl, promptOptions),",
     "});",
     "",
   ].join("\n");
   const withoutClass = `${source.slice(0, classStart)}${adapter}${source.slice(elicitationStart)}`;
-  const adjustedHelperStart = withoutClass.indexOf(helperStartAnchor, classStart);
+  const adjustedHelperStart = withoutClass.indexOf(
+    helperStartAnchor,
+    classStart,
+  );
   const adjustedNextModuleStart = withoutClass.indexOf(
     nextModuleAnchor,
     adjustedHelperStart,
   );
   const transformed = `${withoutClass.slice(0, adjustedHelperStart)}${withoutClass.slice(adjustedNextModuleStart)}`;
 
-  const rawClassStart = rawInput.indexOf('var FH=new Set(["navigate_tab_url"])');
+  const rawClassStart = rawInput.indexOf(
+    'var FH=new Set(["navigate_tab_url"])',
+  );
   const rawElicitationStart = rawInput.indexOf("function ts()", rawClassStart);
   const rawHelperStart = rawInput.indexOf("function jH(", rawElicitationStart);
   const rawNextModuleStart = rawInput.indexOf(
@@ -180,6 +194,99 @@ function replaceFormattedBrowserSecurity(source, rawInput) {
         { start: rawClassStart, end: rawElicitationStart },
         { start: rawHelperStart, end: rawNextModuleStart },
       ],
+      classification: "reconstructed",
+    },
+  };
+}
+
+function configureFormattedBrowserClientSecurityPolicy(source, rawInput) {
+  const environmentAnchor =
+    "getEnvironment: () => globalThis.nodeRepl?.env ?? {},";
+  const environmentStart = source.indexOf(environmentAnchor);
+  if (environmentStart < 0) {
+    throw new Error(
+      "Formatted SiteStatusPolicy environment anchor was not found.",
+    );
+  }
+  const environmentEnd = environmentStart + environmentAnchor.length;
+  const replacement =
+    "getEnvironment: () => __siteStatusEnvironment(globalThis.nodeRepl?.env ?? {}),";
+
+  const rawAnchor = "getEnvironment:()=>globalThis.nodeRepl?.env??{}";
+  const rawStart = rawInput.indexOf(rawAnchor);
+  if (rawStart < 0) {
+    throw new Error("Raw SiteStatusPolicy environment anchor was not found.");
+  }
+  return {
+    source: `${source.slice(0, environmentStart)}${replacement}${source.slice(environmentEnd)}`,
+    mapping: {
+      inputStart: rawStart,
+      inputEnd: rawStart + rawAnchor.length,
+      classification: "reconstructed",
+    },
+  };
+}
+
+function replaceFormattedOriginSessionPolicy(source, rawInput) {
+  const startAnchor = "function ze() {";
+  const nextModuleAnchor =
+    'import { AsyncLocalStorage as z5 } from "node:async_hooks";';
+  const start = source.indexOf(startAnchor);
+  const end = source.indexOf(nextModuleAnchor, start);
+  if (start < 0 || end < 0) {
+    throw new Error("Formatted origin/session policy anchors were not found.");
+  }
+
+  const rawStart = rawInput.indexOf("function ze(){");
+  const rawEnd = rawInput.indexOf(
+    'import{AsyncLocalStorage as z5}from"node:async_hooks"',
+    rawStart,
+  );
+  if (rawStart < 0 || rawEnd < 0) {
+    throw new Error("Raw origin/session policy anchors were not found.");
+  }
+
+  const adapter = [
+    'import { createOriginSessionPolicy as __createOriginSessionPolicy } from "./security/origin-session-policy.ts";',
+    "var {",
+    "  assertRequiredTurnMetadata: ST,",
+    "  evaluateCodexNetworkPolicy: TT,",
+    "  extractBrowserOrigin: Oe,",
+    "  extractHttpOrigin: WT,",
+    "  fileUrlWithoutSearchAndHash: W5,",
+    "  formatBrowserName: be,",
+    "  getCodexSessionId: Yt,",
+    "  getTurnMetadata: ze,",
+    "  isAutomaticReviewDisabled: BT,",
+    "  isLocalhostHostname: VT,",
+    "  missingRequiredTurnMetadata: X8,",
+    "  persistFileTransferResponse: Ol,",
+    "  persistFullCdpResponse: FT,",
+    "  persistHistoryResponse: LT,",
+    "  persistOriginResponse: MT,",
+    "  parseBrowserUrl: zT,",
+    "  queryFileTransfer: Dl,",
+    "  queryFullCdp: OT,",
+    "  queryHistory: NT,",
+    "  queryOrigin: wh,",
+    "  requestBrowserHistoryConsent: $T,",
+    "  requestOriginConsent: qT,",
+    "  resolvePrivilegedNodeRepl: Zt,",
+    "  httpOriginFromUrl: HT,",
+    "} = __createOriginSessionPolicy({",
+    "  formatSecurityError: ne,",
+    "  getDefaultPrivilegedNodeRepl: Re,",
+    "  getElicitationProvider: () => ts(),",
+    "  getNodeRepl: () => globalThis.nodeRepl,",
+    "  globalConfigPath: wr,",
+    "});",
+    "",
+  ].join("\n");
+  return {
+    source: `${source.slice(0, start)}${adapter}${source.slice(end)}`,
+    mapping: {
+      inputStart: rawStart,
+      inputEnd: rawEnd,
       classification: "reconstructed",
     },
   };
@@ -235,8 +342,22 @@ async function main() {
     trailingComma: "all",
   });
   const tabsResult = replaceFormattedTabs(initiallyFormatted, input);
-  const securityResult = replaceFormattedBrowserSecurity(tabsResult.source, input);
-  const displayResult = replaceFormattedNodeReplDisplay(securityResult.source, input);
+  const securityPolicyResult = configureFormattedBrowserClientSecurityPolicy(
+    tabsResult.source,
+    input,
+  );
+  const securityResult = replaceFormattedBrowserSecurity(
+    securityPolicyResult.source,
+    input,
+  );
+  const originSessionPolicyResult = replaceFormattedOriginSessionPolicy(
+    securityResult.source,
+    input,
+  );
+  const displayResult = replaceFormattedNodeReplDisplay(
+    originSessionPolicyResult.source,
+    input,
+  );
   const formatted = await format(displayResult.source, {
     parser: "babel",
     printWidth: 100,
@@ -271,7 +392,8 @@ async function main() {
     extractedModules: {
       processShim: {
         ...processResult.mapping,
-        target: "components/codex-plugin/src/browser-client/runtime/process-shim.ts",
+        target:
+          "components/codex-plugin/src/browser-client/runtime/process-shim.ts",
         confidence: "confirmed",
       },
       browserTabs: {
@@ -281,7 +403,20 @@ async function main() {
       },
       browserSecurity: {
         ...securityResult.mapping,
-        target: "components/codex-plugin/src/browser-client/security/browser-security.ts",
+        target:
+          "components/codex-plugin/src/browser-client/security/browser-security.ts",
+        confidence: "confirmed",
+      },
+      browserClientSecurityPolicy: {
+        ...securityPolicyResult.mapping,
+        target:
+          "components/codex-plugin/src/browser-client/security/policy-config.ts",
+        confidence: "confirmed",
+      },
+      originSessionPolicy: {
+        ...originSessionPolicyResult.mapping,
+        target:
+          "components/codex-plugin/src/browser-client/security/origin-session-policy.ts",
         confidence: "confirmed",
       },
       nodeReplDisplayBridge: {

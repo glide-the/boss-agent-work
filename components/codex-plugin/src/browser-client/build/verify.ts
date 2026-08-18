@@ -473,6 +473,9 @@ async function main(): Promise<void> {
     "ensureFullCdpAllowed",
     "new __BossSiteStatusPolicy",
     ".throwIfBlocksUrl(",
+    'siteStatus: "disabled"',
+    'originAuthorization: "disabled"',
+    "browser-use-runtime-policy",
     'ki("https://chatgpt.com/backend-api/aura/identity")',
   ]) {
     assert.equal(candidateBrowserSource.includes(anchor), true, `missing ${anchor}`);

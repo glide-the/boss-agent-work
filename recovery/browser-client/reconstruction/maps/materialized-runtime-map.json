@@ -8,8 +8,8 @@
   },
   "output": {
     "path": "components/codex-plugin/src/browser-client/browser-runtime.generated.js",
-    "sha256": "fe15d3f449272cb05b082d4e914c13434f9af9bb531878abf78abc5955cac361",
-    "bytes": 1275529,
+    "sha256": "d49ed20fa39d0c73641588dbb18d332fd44fc5359270cfc1b27d711592218cba",
+    "bytes": 1259447,
     "formatter": {
       "name": "prettier",
       "version": "3.6.2",
@@ -44,6 +44,20 @@
       ],
       "classification": "reconstructed",
       "target": "components/codex-plugin/src/browser-client/security/browser-security.ts",
+      "confidence": "confirmed"
+    },
+    "browserClientSecurityPolicy": {
+      "inputStart": 941427,
+      "inputEnd": 941474,
+      "classification": "reconstructed",
+      "target": "components/codex-plugin/src/browser-client/security/policy-config.ts",
+      "confidence": "confirmed"
+    },
+    "originSessionPolicy": {
+      "inputStart": 539388,
+      "inputEnd": 552085,
+      "classification": "reconstructed",
+      "target": "components/codex-plugin/src/browser-client/security/origin-session-policy.ts",
       "confidence": "confirmed"
     },
     "nodeReplDisplayBridge": {
