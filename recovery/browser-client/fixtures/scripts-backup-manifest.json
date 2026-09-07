@@ -1,11 +1,14 @@
 {
   "path": "components/codex-plugin/scripts-bak",
   "createdBeforeScriptsMutation": true,
-  "fileCount": 345,
+  "fileCount": 348,
   "treeHashAlgorithm": "sha256(relative-path + NUL + file-bytes + NUL, sorted by relative path)",
-  "treeSha256": "d5537ab072c6cfd1a64d69aec27a3a76dd7b6a0f30eb9925d4d1e42f8b1cdd38",
+  "treeSha256": "e4f058ccdafa38a8e1028f6a944d9e98f2697efdee514dab76868689d7774d1f",
   "additionalSnapshots": {
-    "snapshots/standalone.8-response-meta-compat/browser-client.mjs": "d3a46310e170cd04943dc1a2c91b46adfdb1d099d473066235ba04123df0626f"
+    "snapshots/standalone.8-response-meta-compat/browser-client.mjs": "d3a46310e170cd04943dc1a2c91b46adfdb1d099d473066235ba04123df0626f",
+    "snapshots/standalone.8-void-response-hang-prechange/SHA256SUMS": "37b98a863c557ea0678c63de2ad970af44f0f98ea33f8864752df69132aa5b87",
+    "snapshots/standalone.8-void-response-hang-prechange/browser-client.mjs": "67abc484942685467774857a3bcc228ba9c97e040efa7eae88923d01471afe3a",
+    "snapshots/standalone.8-void-response-hang-prechange/browser-service.mjs": "114346d861435122511479f30477a8af7df0253d8f988e9f9191a6272d049c84"
   },
   "topLevelFiles": {
     "browser-client.mjs": "cf71c5bf138839ff6f6df07328a63d6897458f122ed68ee0bf496e301cc06c45",

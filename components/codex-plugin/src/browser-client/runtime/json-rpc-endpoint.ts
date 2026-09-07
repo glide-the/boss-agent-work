@@ -186,7 +186,11 @@ export class CancellableJsonRpcEndpoint {
       pending.reject(remote.data === undefined
         ? (remote.message ?? "Something went wrong")
         : new RemoteJsonRpcError(remote));
-    } else if ("result" in message) pending.resolve(message.result);
+    } else {
+      // Void extension handlers serialize `result: undefined` without a result
+      // property. Match the baseline client and settle those responses as void.
+      pending.resolve(message.result);
+    }
   }
 
   private rejectPendingRequests(reason: unknown): void {

@@ -2,7 +2,7 @@
 
 发布日期：2026-09-07
 
-插件版本：`26.707.30751-standalone.8`
+插件版本：`26.707.30751-standalone.9`
 
 Chrome 扩展版本：`1.1.5.2`
 
@@ -14,6 +14,7 @@ Chrome 扩展版本：`1.1.5.2`
 
 本版本包含三组相互配合的改动：
 
+- 个人 Browser Client 恢复对 Chrome Extension void JSON-RPC 响应的基线兼容：当成功响应只含 `jsonrpc` 和匹配 `id` 时，以 `undefined` 结束请求，避免 `nameSession`、导航等已执行操作固定挂起到工具超时。设计和证据见 [browser-void-response-hang-design.md](browser-void-response-hang-design.md)。
 - Browser Client 和源码 Chrome Extension 支持可取消的浏览器操作。DOM snapshot 超时、调用方取消、JavaScript Dialog、标签关闭或浏览器断连时，会清理 pending request 并返回结构化取消原因。
 - 个人插件不再依赖旧的 `NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S` 共享 allowlist。插件自带 `boss_repl` MCP，并在其子进程中注册独立的 `boss_browser` trusted service。
 - Native Host 用户级注册增加只读 preflight、写入前复核、备份、幂等更新和冲突保护；不会覆盖官方 Host `com.openai.codexextension`、其他插件 registry entry 或企业策略。
@@ -40,9 +41,9 @@ Chrome 扩展版本：`1.1.5.2`
 
 | 档位 | Chrome Extension 来源 | Native Host 来源 | 用途 | 2026-09-07 SHA-256 |
 | --- | --- | --- | --- | --- |
-| `baseline` | `baselines/chrome-extension` | `baselines/native-host/macos/arm64/extension-host` | 推荐安装和签名基线回归 | `d13aadb8fd1257f325d3b1570939ebe0ec0f147e6b8c823a0ef71f2abd7c208a` |
-| `extension-dev` | `dist/chrome-extension`，由 TypeScript/React 源码构建 | 签名基线 Host | 验证本版本 Dialog/取消协议和扩展改动 | `8a69270fa7a81e5d52da77c1e23375b0e95d3416f9bbce2f22364f428f6fd0d1` |
-| `full-reconstructed` | `dist/chrome-extension` | `dist/native-host/macos/arm64/extension-host`，由 Rust 源码构建 | 协议研究和源码重建验证 | `831040d89e4ac2ad9b084c0880f96ca1461279214356849d2ea8f164499d9cea` |
+| `baseline` | `baselines/chrome-extension` | `baselines/native-host/macos/arm64/extension-host` | 推荐安装和签名基线回归 | `e345f2548f9ecf086bd07cb6a77a3baf72b0af1dff3fc1f73da3fade004a4607` |
+| `extension-dev` | `dist/chrome-extension`，由 TypeScript/React 源码构建 | 签名基线 Host | 验证本版本 Dialog/取消协议和扩展改动 | `8c56b3dcb83efceaee586b78f4fd022b79b8f21824374e2ec2b36620711de41c` |
+| `full-reconstructed` | `dist/chrome-extension` | `dist/native-host/macos/arm64/extension-host`，由 Rust 源码构建 | 协议研究和源码重建验证 | `ac9e949248263680410475f8d7f0644c17e53a5813aa36e0a48b7770c8b76978` |
 
 表中摘要对应本次最终打包的具体文件。当前归档脚本会保留构建物元数据，重新构建可能产生新的归档摘要；交付时应以同批次生成的 `.sha256` sidecar 为准，不能把表中值当作版本的永久身份。
 
@@ -66,13 +67,13 @@ electron-app/    Electron Main 生命周期模块与手动 reconcile/rollback CL
 | Rust 重建 Host | `components/native-host/` | `dist/native-host/macos/arm64/extension-host` |
 | 签名基线 Host | `baselines/native-host/macos/arm64/extension-host` | 原样进入 `baseline` 和 `extension-dev` |
 
-`components/codex-plugin/scripts-bak/` 保存原始恢复基线和本轮生成物修改前的唯一快照，不是当前权威源码。发布组装会排除插件的 `scripts-bak/`、`src/` 和 `test/`；安装包只保留运行时脚本、必要依赖、扩展、Host、技能、配置和用户文档，不公开开发依赖、测试夹具或恢复基线。当前清单摘要是 `d5537ab072c6cfd1a64d69aec27a3a76dd7b6a0f30eb9925d4d1e42f8b1cdd38`（345 个文件）。
+`components/codex-plugin/scripts-bak/` 保存原始恢复基线和本轮生成物修改前的唯一快照，不是当前权威源码。发布组装会排除插件的 `scripts-bak/`、`src/` 和 `test/`；安装包只保留运行时脚本、必要依赖、扩展、Host、技能、配置和用户文档，不公开开发依赖、测试夹具或恢复基线。当前清单摘要是 `e4f058ccdafa38a8e1028f6a944d9e98f2697efdee514dab76868689d7774d1f`（348 个文件）。
 
 当前个人运行时文件摘要：
 
 ```text
-browser-client.mjs          67abc484942685467774857a3bcc228ba9c97e040efa7eae88923d01471afe3a
-browser-service.mjs         114346d861435122511479f30477a8af7df0253d8f988e9f9191a6272d049c84
+browser-client.mjs          38a49b370f3ea42d20d5b89567d2a5064fb89720c34c0511d48f4489a24d5afd
+browser-service.mjs         04ad2c2fe354c61f676844efa593da79a53837e7c067afdd43f907190b115f86
 launch-browser-service.mjs  0c6a9d6ed3072a489e068b7279a4427bcc87a19a54d7474ae380bbc286fd56ca
 ```
 
@@ -183,7 +184,7 @@ preflight 会重新计算已安装 `browser-client.mjs` 的摘要。设置预期
 
 ```bash
 BOSS_PLUGIN_EXPECTED_BROWSER_CLIENT_SHA256=\
-67abc484942685467774857a3bcc228ba9c97e040efa7eae88923d01471afe3a \
+38a49b370f3ea42d20d5b89567d2a5064fb89720c34c0511d48f4489a24d5afd \
   bun components/electron-app/bin/reconcile-native-host.mjs --dry-run --json
 
 CODEX_HOME=/absolute/personal-codex \
@@ -255,18 +256,18 @@ CODEX_DATA_DIR="${CODEX_HOME:-$HOME/.codex}"
 
 发布前已完成的检查：
 
-- Browser Client 构建、类型检查和 33 项单元测试通过；client → `boss_browser` → service roundtrip 通过。
+- Browser Client 构建、类型检查和 34 项单元测试通过；client → `boss_browser` → service roundtrip 通过。
 - 当前 Desktop `node_repl` 的动态授权 ping 通过，`nativePipeAvailable=true`；受限 PATH `/usr/bin:/bin` 配合 bundled Node 的探针也通过。
 - Electron 测试 18/18 通过；临时 `CODEX_HOME` 的首次、重复初始化、个人工具授权、配置保留和快照回滚通过。
 - Chrome Extension 类型检查、构建通过；打包验证运行的插件测试为 16/16，Rust Native Host 测试 10/10 通过。
 - 三个档位均通过 `make verify` 并成功生成可读取归档。
 - 三个归档均通过公开发布审计：不包含 AppleDouble、`.DS_Store`、不安全路径或本机构建绝对路径。
-- `boss_repl` 可在新任务中发现，并通过专用服务完成真实 Chrome 标签页只读检查。
+- `boss_repl` 可在全新 Codex CLI 任务 `01a07ac8-ac88-72e0-8224-719ceaf44992` 中发现。该任务从 `.9` 路径加载 Browser Client，`nameSession` 在 15 ms 内返回，随后在同一真实 Chrome 标签页访问 `https://example.com/` 和 BOSS 公开搜索页并读取 URL/title；两次页面操作分别在 492 ms 和 468 ms 内完成，最终清理标签页。
 
 仍需在目标机器验收：
 
-- 当前已运行的 Desktop GUI 完整重启后是否立即刷新 `boss_repl` 工具目录。
-- 本版本 Dialog/取消在真实 Chrome 页面上的回归；发布验收只执行了 `tabs.list()`，没有导航或表单操作。
+- 当前已运行的 Desktop GUI 完整重启后是否立即刷新 `boss_repl` 工具目录；重启前创建的 GUI 任务仍登记 `.8`，因此没有执行浏览器操作。
+- 本版本 Dialog/取消在真实 Chrome 页面上的回归；发布验收覆盖了会话命名与导航，没有触发 Dialog，也没有执行表单操作。
 - 企业策略存在时的最终允许/拒绝结果，应由宿主和管理员策略决定。
 - Windows HKCU Native Host 完整回滚尚未验证。
 

@@ -583,9 +583,8 @@ class CancellableJsonRpcEndpoint {
     if ("error" in message && typeof message.error === "object" && message.error !== null) {
       const remote = message.error;
       pending.reject(remote.data === undefined ? remote.message ?? "Something went wrong" : new RemoteJsonRpcError(remote));
-    } else {
+    } else if ("result" in message)
       pending.resolve(message.result);
-    }
   }
   rejectPendingRequests(reason) {
     const pending = [...this.pendingRequests.values()];

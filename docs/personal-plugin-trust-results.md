@@ -5,11 +5,11 @@
 
 ## 结果
 
-个人插件已升级并安装为 `chrome-dev@codex-chrome-automation-local` `26.707.30751-standalone.8`。`latest` 已指向 `.8`，Native Host 已按当前用户路径注册，用户配置已加入个人插件专属的 `boss_repl.js` 授权。新版 Browser Client 不再依赖旧 SHA allowlist，而是通过插件自带 `boss_repl` 调用独立 `boss_browser` trusted service。
+个人插件已升级并安装为 `chrome-dev@codex-chrome-automation-local` `26.707.30751-standalone.9`。`latest` 已指向 `.9`，Native Host 已按当前用户路径注册，用户配置已加入个人插件专属的 `boss_repl.js` 授权。新版 Browser Client 不再依赖旧 SHA allowlist，而是通过插件自带 `boss_repl` 调用独立 `boss_browser` trusted service。
 
 真实宿主授权握手已通过：当前 Desktop `node_repl` 动态加载该服务，返回匹配 nonce、`service=boss_browser`、`protocolVersion=1`、`nativePipeAvailable=true`；preflight 因而报告 `effectiveTrust=isolated-service-authorized`。这证明个人服务获得当前运行时能力，不能替代完整 Chrome 连接验收。
 
-Desktop 没有被自动关闭。一个新启动的临时 Codex 任务发现了 `boss_repl`，并通过个人服务对真实 Chrome 执行一次 `browser.tabs.list()`；调用完成且返回 `tabCount=0`。验收没有导航、点击、输入、上传、提交或发送消息。当前已运行的 Desktop GUI 仍可能保留安装前的工具目录，需要用户完整重启后确认。
+Desktop 没有被自动关闭。全新 Codex CLI 任务 `01a07ac8-ac88-72e0-8224-719ceaf44992` 从 `.9` 路径发现 `boss_repl`，完成 `browser.nameSession()`，并通过个人服务对真实 Chrome 依次访问 `https://example.com/` 和 BOSS 公开搜索页，读取到 `Example Domain` 与 `BOSS直聘` 标题。验收没有点击、输入、上传、提交或发送消息，结束时关闭了测试标签页。当前已运行的 Desktop GUI 仍保留安装前的插件目录快照，需要用户完整重启后确认 GUI 刷新。
 
 ## 根因判断
 
@@ -21,6 +21,7 @@ Desktop 没有被自动关闭。一个新启动的临时 Codex 任务发现了 `
 - confirmed：根因是旧 `nativePipe` 客户端契约与当前 trusted-service/RPC 运行时不兼容。
 - confirmed：修复采用个人 `boss_repl` / `boss_browser` 命名空间，没有覆盖官方 `browser` 服务或更改 Native Host 协议。
 - confirmed：个人工具授权持久化在 `plugins."chrome-dev@codex-chrome-automation-local".mcp_servers.boss_repl.tools.js.approval_mode`，不是旧 SHA 环境变量。
+- confirmed：`.8` 的页面挂起是可取消 JSON-RPC endpoint 没有结算只含匹配 `id` 的 void 成功响应；扩展已执行操作，但 `result: undefined` 被 JSON 序列化省略。`.9` 恢复基线语义后，真实任务中的 `nameSession` 和两次导航均及时完成。
 
 “占用系统指纹”不成立；“个人插件不该复用旧共享信任变量”成立。本次按后者完成隔离。
 
@@ -46,6 +47,8 @@ Desktop 没有被自动关闭。一个新启动的临时 Codex 任务发现了 `
 - `components/electron-app/src/codex-config-client.mjs`：通过 Codex App Server 在用户层结构化写入单一 `boss_repl.js` 授权，使用 `expectedVersion` 防止并发覆盖，并识别企业策略覆盖。
 - `components/electron-app/src/manual-install-environment.mjs`、`native-host-backup.mjs` 与两个 CLI：写入前二次校验、把 `config.toml` 纳入快照、幂等注册和受保护回滚。
 - `components/codex-plugin/src/browser-client/browser-runtime.generated.js`：兼容没有 `setResponseMeta` 的个人 `node_repl` API，仍在支持该方法的宿主中保留响应元数据。
+- `components/codex-plugin/src/browser-client/runtime/json-rpc-endpoint.ts`：把带匹配 `id` 且无结构化错误的响应结算为成功；缺少 `result` 时返回 `undefined`。
+- `components/codex-plugin/src/browser-client/test/json-rpc-endpoint.test.ts`：覆盖 JSON 序列化省略 `undefined` 后的 id-only 响应和 pending 清理。
 - 插件 skill、安装手册、生命周期文档和验证脚本已改为 `boss_repl`，不再指导使用共享 `node_repl`。
 
 生成物：
@@ -54,7 +57,7 @@ Desktop 没有被自动关闭。一个新启动的临时 Codex 任务发现了 `
 - `components/codex-plugin/scripts/browser-service.mjs`
 - `components/codex-plugin/scripts/launch-browser-service.mjs`
 
-`scripts-bak` 的原始基线未被覆盖；本轮生成物修改前另存唯一快照。当前清单 digest 为 `d5537ab072c6cfd1a64d69aec27a3a76dd7b6a0f30eb9925d4d1e42f8b1cdd38`（345 文件）。
+`scripts-bak` 的原始基线未被覆盖；本轮生成物修改前另存唯一快照。当前清单 digest 为 `e4f058ccdafa38a8e1028f6a944d9e98f2697efdee514dab76868689d7774d1f`（348 文件）。
 
 ## 环境变量
 
@@ -70,8 +73,8 @@ Desktop 没有被自动关闭。一个新启动的临时 Codex 任务发现了 `
 当前发布摘要：
 
 ```text
-browser-client.mjs          67abc484942685467774857a3bcc228ba9c97e040efa7eae88923d01471afe3a
-browser-service.mjs         114346d861435122511479f30477a8af7df0253d8f988e9f9191a6272d049c84
+browser-client.mjs          38a49b370f3ea42d20d5b89567d2a5064fb89720c34c0511d48f4489a24d5afd
+browser-service.mjs         04ad2c2fe354c61f676844efa593da79a53837e7c067afdd43f907190b115f86
 launch-browser-service.mjs 0c6a9d6ed3072a489e068b7279a4427bcc87a19a54d7474ae380bbc286fd56ca
 ```
 
@@ -86,10 +89,10 @@ CODEX_CLI="$HOME/.codex/plugins/.plugin-appserver/codex"
   /Users/dmeck/project/boss-agent-work/develop/dist/baseline/marketplace --json
 "$CODEX_CLI" plugin add chrome-dev@codex-chrome-automation-local --json
 
-BOSS_PLUGIN_EXPECTED_BROWSER_CLIENT_SHA256=67abc484942685467774857a3bcc228ba9c97e040efa7eae88923d01471afe3a \
+BOSS_PLUGIN_EXPECTED_BROWSER_CLIENT_SHA256=38a49b370f3ea42d20d5b89567d2a5064fb89720c34c0511d48f4489a24d5afd \
   bun components/electron-app/bin/reconcile-native-host.mjs --dry-run --json
 
-BOSS_PLUGIN_EXPECTED_BROWSER_CLIENT_SHA256=67abc484942685467774857a3bcc228ba9c97e040efa7eae88923d01471afe3a \
+BOSS_PLUGIN_EXPECTED_BROWSER_CLIENT_SHA256=38a49b370f3ea42d20d5b89567d2a5064fb89720c34c0511d48f4489a24d5afd \
   bun components/electron-app/bin/reconcile-native-host.mjs --json
 ```
 
@@ -110,14 +113,14 @@ cargo test --manifest-path components/native-host/Cargo.toml
 当前 Native Host 初始化快照：
 
 ```text
-/Users/dmeck/.codex/backups/personal-plugin-native-host-98627cb2-e1a0-4737-af1f-487553c2637e/snapshot.json
+/Users/dmeck/.codex/backups/personal-plugin-native-host-ef3748ff-071f-406f-a88d-5863ab0480dc/snapshot.json
 ```
 
 如需回滚本轮初始化：
 
 ```bash
 bun components/electron-app/bin/rollback-native-host.mjs \
-  /Users/dmeck/.codex/backups/personal-plugin-native-host-98627cb2-e1a0-4737-af1f-487553c2637e/snapshot.json
+  /Users/dmeck/.codex/backups/personal-plugin-native-host-ef3748ff-071f-406f-a88d-5863ab0480dc/snapshot.json
 ```
 
 回滚会在目标随后发生变化时拒绝覆盖。恢复 `config.toml.before` 会同时撤销官方 CLI 后新增的其他配置，必须先人工审查 diff；本轮不自动执行该覆盖。
@@ -135,34 +138,35 @@ bun components/electron-app/bin/rollback-native-host.mjs \
 
 | 检查 | 结果 |
 | --- | --- |
-| Browser canonical build/typecheck/unit | 通过；33 项测试，15 项 canonical artifact |
+| Browser canonical build/typecheck/unit | 通过；34 项测试，15 项 canonical artifact |
 | client → `boss_browser` → service roundtrip | 通过，`pass-via-isolated-boss-browser-service` |
 | 真实 node_repl 动态授权 ping | 通过，`nativePipeAvailable=true` |
 | Finder 风格受限 PATH + bundled Node | 通过；PATH 仅 `/usr/bin:/bin` 时授权 ping 成功 |
 | Electron tests | 18/18 通过 |
 | 临时 CODEX_HOME 首次/重复初始化 | 通过；最小授权、幂等、无关配置保留、显式拒绝不覆盖、回滚成功 |
-| 实际用户级最终版本初始化 | 通过；`.8` 已安装，`latest` 与用户级 Host 注册正确 |
+| 实际用户级最终版本初始化 | 通过；`.9` 已安装，`latest` 与用户级 Host 注册正确，重复初始化返回 `no-op` |
 | Chrome Extension typecheck/build | 通过 |
 | Native Host Rust tests | 10/10 通过 |
 | baseline / extension-dev / full-reconstructed | 全部验证并打包成功 |
-| 新启动任务的 `boss_repl` 工具发现 | 通过；临时任务 `01a07a86-c1a4-7a53-8dbe-e9a161f175c9` |
-| 真实 Chrome 标签页读取 | 通过；唯一工具调用完成 `browser.tabs.list()`，Chrome backend，`tabCount=0` |
+| 新启动任务的 `boss_repl` 工具发现 | 通过；Codex CLI 任务 `01a07ac8-ac88-72e0-8224-719ceaf44992` 从 `.9` 路径加载 |
+| 真实 Chrome 会话命名 | 通过；`nameSession` 工具回执 15 ms |
+| 真实页面导航与读取 | 通过；`example.com` 492 ms，BOSS 公开搜索页 468 ms，读取 URL/title 后清理标签页 |
 | 当前 Desktop GUI 完整重启后的工具刷新 | 未验证；未自动关闭 Desktop |
 
 发行包：
 
 ```text
-artifacts/boss-delivery-baseline.tar.gz           d13aadb8fd1257f325d3b1570939ebe0ec0f147e6b8c823a0ef71f2abd7c208a
-artifacts/boss-delivery-extension-dev.tar.gz      8a69270fa7a81e5d52da77c1e23375b0e95d3416f9bbce2f22364f428f6fd0d1
-artifacts/boss-delivery-full-reconstructed.tar.gz 831040d89e4ac2ad9b084c0880f96ca1461279214356849d2ea8f164499d9cea
+artifacts/boss-delivery-baseline.tar.gz           e345f2548f9ecf086bd07cb6a77a3baf72b0af1dff3fc1f73da3fade004a4607
+artifacts/boss-delivery-extension-dev.tar.gz      8c56b3dcb83efceaee586b78f4fd022b79b8f21824374e2ec2b36620711de41c
+artifacts/boss-delivery-full-reconstructed.tar.gz ac9e949248263680410475f8d7f0644c17e53a5813aa36e0a48b7770c8b76978
 ```
 
 ## 剩余状态
 
 - confirmed：个人插件、个人 trusted service 和用户级 Native Host 均已落地；旧 SHA 变量不参与个人初始化。
 - confirmed：服务授权与 privileged pipe 已由当前运行时动态证明。
-- confirmed：新启动的临时 Codex 任务已发现 `boss_repl` 并通过真实 Chrome 完成标签页只读调用。
-- inferred：当前 Desktop GUI 完整重启后会刷新到 `.8` 的工具目录。
+- confirmed：新启动的 Codex CLI 任务已从 `.9` 路径发现 `boss_repl`，并通过真实 Chrome 完成会话命名与两个页面的只读导航。
+- inferred：当前 Desktop GUI 完整重启后会刷新到 `.9` 的工具目录。
 - unresolved：远程企业策略；Windows HKCU 完整回滚；真实页面上的 Dialog/取消回归。
 
 源码发布、提交和 PR 状态由 [Codex 插件发布与使用说明](codex-plugin-release.md) 及仓库历史记录追踪。

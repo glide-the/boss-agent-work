@@ -64,6 +64,16 @@ describe("CancellableJsonRpcEndpoint", () => {
     expect(endpoint.debugSnapshot()).toEqual({ pendingRequests: 0, tombstones: 0 });
   });
 
+  test("resolves void responses whose undefined result was omitted by JSON serialization", async () => {
+    const transport = new FakeTransport();
+    const endpoint = new CancellableJsonRpcEndpoint(transport);
+    const request = endpoint.sendRequest("nameSession", { name: "Read-only diagnosis" });
+    transport.receive({ jsonrpc: "2.0", id: 1 });
+
+    expect(await request).toBeUndefined();
+    expect(endpoint.debugSnapshot()).toEqual({ pendingRequests: 0, tombstones: 0 });
+  });
+
   test("propagates cancellation, acknowledges browser cleanup, and drops a late response", async () => {
     const transport = new FakeTransport();
     const endpoint = new CancellableJsonRpcEndpoint(transport);
