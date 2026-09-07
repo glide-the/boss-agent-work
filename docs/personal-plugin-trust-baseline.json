@@ -1,0 +1,18 @@
+{
+  "/Users/dmeck/project/boss-agent-work/develop/config/identity.json": "c4529ba356aaa5ebeb89b50e2e0771d724e4377d4748be0968fd292f2860dea9",
+  "/Users/dmeck/project/boss-agent-work/develop/config/marketplace.json": "a85e105d20b18dbd1912856b79aaf333c9206dd42c709dd04f6c42e0096edb29",
+  "/Users/dmeck/.codex/config.toml": "439db5eedff564668f3f19b79cb9c4b2c1ea019ef7eee8c25bc5272997777561",
+  "/Users/dmeck/project/boss-agent-work/develop/components/electron-app/src/manual-install-environment.mjs": "147d823ab2bab00fb6600ac02f723bae730cc70d611b1905280f78d30eac2fbc",
+  "/Users/dmeck/project/boss-agent-work/develop/components/electron-app/src/boss-plugin-native-host-lifecycle.mjs": "6b362ff309ea3fbfe9e492786d05d17386eafdb6087ca4acce15307ba33af583",
+  "/Users/dmeck/project/boss-agent-work/develop/components/electron-app/bin/reconcile-native-host.mjs": "15d667d2d05a13404b45ea203a72730510ec48cd517a9d4b4eaec3000da98eaf",
+  "/Users/dmeck/project/boss-agent-work/develop/components/codex-plugin/scripts/browser-client.mjs": "9599a8a2520d1e064e3965e4cbf82240f3179cf935ab355dca3f96429c52e6e6",
+  "/Users/dmeck/project/boss-agent-work/develop/components/codex-plugin/scripts/installManifest.mjs": "6f688dc0919de5dcf8f302eee49669e670f3f15ffd198689438b7d5ea8f5bc57",
+  "/Users/dmeck/.codex/plugins/cache/codex-chrome-automation-local/chrome-dev/26.707.30751-standalone.4/scripts/browser-client.mjs": "9599a8a2520d1e064e3965e4cbf82240f3179cf935ab355dca3f96429c52e6e6",
+  "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl": "0d6f59d5aff9db38d3bf1cad78f3b2d71daaedaefddbc00c65fa3241ce83ad7c",
+  "/Users/dmeck/project/boss-agent-work/develop/dist/baseline/marketplace/plugins/chrome-dev/scripts/browser-client.mjs": "9599a8a2520d1e064e3965e4cbf82240f3179cf935ab355dca3f96429c52e6e6",
+  "/Users/dmeck/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.openai.codexextension.dev.json": "7330a186babd42a3a1fe1c29b2b41ad181fae302dff36a2b5aa3f2c3e56f924a",
+  "/Users/dmeck/.codex/chrome-native-hosts-v2.json": "6144609ded644becdacfd2978335ca618c5395f45764b078fecbea2eb9bad57b",
+  "/Users/dmeck/Library/Application Support/OpenAI/Codex/chrome-native-hosts-v2.json": "03aea5a58fdf7aa946d63e929237e12f8c9a286e6f0ce974c868ae3c7f641cd6",
+  "branch": "codex/chrome-dialog-cancellation",
+  "initialStatus": " M components/chrome-extension/README.md\n M components/chrome-extension/src/background/cdp-client.ts\n M components/chrome-extension/src/background/chrome-browser-control-handler.ts\n M components/chrome-extension/src/background/index.ts\n M components/chrome-extension/src/background/json-rpc-endpoint.ts\n M components/chrome-extension/src/background/native-messaging-transport.ts\n M components/chrome-extension/src/types/native.ts\n M components/codex-plugin/docs/api.json\n M components/codex-plugin/docs/playwright.md\n M components/codex-plugin/src/browser-client/README.md\n M components/codex-plugin/src/browser-client/browser-runtime.generated.js\n M recovery/browser-client/reconstruction/maps/materialized-runtime-map.json\n M recovery/browser-client/reconstruction/scripts/materialize-browser-runtime.mjs\n?? components/chrome-extension/test/\n?? components/codex-plugin/src/browser-client/runtime/browser-operation.ts\n?? components/codex-plugin/src/browser-client/runtime/json-rpc-endpoint.ts\n?? components/codex-plugin/src/browser-client/test/browser-operation.test.ts\n?? components/codex-plugin/src/browser-client/test/json-rpc-endpoint.test.ts\n"
+}

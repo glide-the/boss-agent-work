@@ -123,6 +123,7 @@ Codex 会在同一个任务中展示 Chrome 操作、岗位处理进度和当前
 
 ## 相关内容
 
+- [Codex 插件发布与使用说明](docs/codex-plugin-release.md)
 - [本地安装与排障](docs/manual-install.md)
 - [Browser Client 策略配置（Site Status 与 Origin）](docs/browser-client-security-policy-config.md)
 - [项目完整开发过程与复线](docs/development-history.md)

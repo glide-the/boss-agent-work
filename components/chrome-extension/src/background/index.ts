@@ -17,7 +17,10 @@ async function main(): Promise<void> {
   });
 
   const browserControlHandler = new ChromeBrowserControlHandler();
-  const nativeTransport = new NativeMessagingTransport(NATIVE_HOSTS.dev, { onStatusChange: persistNativeHostStatus });
+  const nativeTransport = new NativeMessagingTransport(NATIVE_HOSTS.dev, {
+    onStatusChange: persistNativeHostStatus,
+    onDisconnect: () => void browserControlHandler.handleBrowserDisconnected(),
+  });
   const bridge = new NativeJsonRpcBridge(nativeTransport as any, browserControlHandler);
 
   registerSidePanelListeners();
@@ -33,7 +36,12 @@ async function main(): Promise<void> {
   });
 
   chrome.debugger.onEvent.addListener((source: unknown, method: string, params: unknown) => {
+    browserControlHandler.handleCdpEvent(source as { tabId?: number }, method, params);
     bridge.sendCdpEvent({ source, method, params });
+  });
+
+  chrome.tabs.onRemoved.addListener((tabId: number) => {
+    void browserControlHandler.handleTabClosed(tabId);
   });
 
   chrome.downloads.onCreated.addListener((item: unknown) => browserControlHandler.handleDownloadCreated(item));

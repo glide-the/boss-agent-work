@@ -294,7 +294,9 @@ async function runtimeSetupSnapshot(
       path.join(pluginRoot, "docs"),
       "dir",
     );
-    for (const name of ["browser-client.mjs", "site-status-policy.mjs"]) {
+    const runtimeFiles = ["browser-client.mjs", "site-status-policy.mjs"];
+    if (sourceName === "candidate") runtimeFiles.push("browser-service.mjs");
+    for (const name of runtimeFiles) {
       await copyFile(path.join(runtimeRoot, name), path.join(scriptsRoot, name));
     }
     await symlink(
@@ -302,11 +304,15 @@ async function runtimeSetupSnapshot(
       path.join(scriptsRoot, "node_modules"),
       "dir",
     );
-    const result = await run([
+    const command = [
       "bun",
       setupSnapshotPath,
       path.join(scriptsRoot, "browser-client.mjs"),
-    ]);
+    ];
+    if (sourceName === "candidate") {
+      command.push(path.join(scriptsRoot, "browser-service.mjs"));
+    }
+    const result = await run(command);
     assert.equal(result.exitCode, 0, result.stderr);
     const line = result.stdout.trim().split(/\r?\n/u).at(-1);
     assert.notEqual(line, undefined);
@@ -423,10 +429,23 @@ async function main(): Promise<void> {
     candidateBrowser.setupBrowserRuntime.length,
     baselineBrowser.setupBrowserRuntime.length,
   );
-  assert.deepEqual(
-    await runtimeSetupSnapshot(candidateRoot, "candidate"),
+  const baselineSetup = objectRecord(
     await runtimeSetupSnapshot(baselineRoot, "baseline"),
   );
+  const candidateSetup = objectRecord(
+    await runtimeSetupSnapshot(candidateRoot, "candidate"),
+  );
+  assert.equal(candidateSetup.ok, true);
+  assert.deepEqual(candidateSetup.agentKeys, baselineSetup.agentKeys);
+  assert.deepEqual(candidateSetup.globalKeys, baselineSetup.globalKeys);
+  assert.equal(candidateSetup.displayType, baselineSetup.displayType);
+  assert.equal(Number(candidateSetup.rpcCalls) > 0, true);
+  assert.deepEqual(candidateSetup.rpcServices, ["boss_browser"]);
+
+  const serviceModule = await importFresh<Record<string, unknown>>(
+    path.join(candidateRoot, "browser-service.mjs"),
+  );
+  assert.deepEqual(Object.keys(serviceModule).sort(), ["handleRpc"]);
 
   const [baselinePolicy, candidatePolicy] = await Promise.all([
     importFresh<SiteStatusPolicyModule>(
@@ -518,7 +537,7 @@ async function main(): Promise<void> {
         candidate: candidateAfter,
         firstPartyOutputs: outputNames,
         browserRuntimeExport: "setupBrowserRuntime",
-        runtimeSetupDifferential: "pass",
+        runtimeSetupDifferential: "pass-via-isolated-boss-browser-service",
         cliDifferential: "pass",
         siteStatusDifferential: "pass",
         installManifestDifferential: "pass",

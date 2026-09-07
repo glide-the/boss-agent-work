@@ -12,6 +12,13 @@ import {
   createDisplay as DP,
   createNodeReplDisplayBridge as NG,
 } from "./runtime/node-repl-display.ts";
+import { CancellableJsonRpcEndpoint as __CancellableJsonRpcEndpoint } from "./runtime/json-rpc-endpoint.ts";
+import {
+  BrowserOperationError as __BrowserOperationError,
+  domSnapshotOperations as __domSnapshotOperations,
+  throwIfBrowserOperationAborted as __throwIfBrowserOperationAborted,
+} from "./runtime/browser-operation.ts";
+import { createBossBrowserRpc as __createBossBrowserRpc } from "./runtime/trusted-service.ts";
 __installProcessShim();
 var JP = Object.create;
 var yp = Object.defineProperty;
@@ -14543,7 +14550,11 @@ function B3(t) {
 }
 var Za = {};
 I(Za, { PayloadSchema: () => uv, ResultSchema: () => M3, commandType: () => cv, create: () => F3 });
-var uv = l.object({ browser_id: l.string(), tab_id: l.string() }),
+var uv = l.object({
+    browser_id: l.string(),
+    tab_id: l.string(),
+    timeout_ms: l.number().int().positive().optional(),
+  }),
   M3 = l.object({ dom_snapshot: l.string() }),
   cv = "playwright_dom_snapshot";
 function F3(t) {
@@ -15748,9 +15759,26 @@ var ou = class t {
         });
       return qc(n.data);
     }
-    async domSnapshot() {
-      return (await this.#r.send({ command: Za.create({ browser_id: this.#e, tab_id: this.#t }) }))
-        .dom_snapshot;
+    async domSnapshot(e = {}) {
+      let r = Number(this.#t);
+      return await __domSnapshotOperations.run({
+        key: `${this.#e}:${this.#t}`,
+        operation: "playwright.domSnapshot",
+        tabId: r,
+        timeoutMs: e.timeoutMs,
+        signal: e.signal,
+        execute: async ({ operationId: n, signal: o, timeoutMs: i }) =>
+          (
+            await this.#r.send({
+              command: Za.create({ browser_id: this.#e, tab_id: this.#t, timeout_ms: i }),
+              operation: "playwright.domSnapshot",
+              operationId: n,
+              signal: o,
+              tabId: r,
+              timeoutMs: i,
+            })
+          ).dom_snapshot,
+      });
     }
   };
 var Wo = class {
@@ -16839,15 +16867,18 @@ var pi = class {
     async display(e) {
       await this.displaySideEffect(e);
     }
-    async send({ command: e, timeoutMs: r }) {
-      let n = e.toJSON(),
-        o = await this.executeAgentCommand({
-          ...n,
-          client_timeout_ms: typeof r == "number" && r > 0 ? r : void 0,
-        }),
-        i = await e6(o, this.displaySideEffect);
-      if (i == null) throw new Error("transport send returned empty response");
-      return i;
+    async send({ command: e, timeoutMs: r, signal: n, operationId: o, operation: i, tabId: s }) {
+      let a = e.toJSON(),
+        u = await this.executeAgentCommand(
+          {
+            ...a,
+            client_timeout_ms: typeof r == "number" && r > 0 ? r : void 0,
+          },
+          { signal: n, operationId: o, operation: i, tabId: s },
+        );
+      let c = await e6(u, this.displaySideEffect);
+      if (c == null) throw new Error("transport send returned empty response");
+      return c;
     }
   },
   e6 = async (t, e) => {
@@ -17001,6 +17032,7 @@ var du = class {
     }
   }
 };
+du = __CancellableJsonRpcEndpoint;
 function fi(t, e) {
   return new Error(`${t} does not support command "${e.type}".`);
 }
@@ -25480,8 +25512,30 @@ var Yl = class extends qj {
           });
     }
     async executeTargetCdp(r, n, o, i = {}) {
+      __throwIfBrowserOperationAborted(
+        i.signal,
+        i.operation ?? "browser.operation",
+        r.tabId,
+        i.operationId,
+      );
+      try {
+        this.throwIfJsDialogBlocksMethod(r.tabId, n);
+      } catch (s) {
+        if (i.operationId != null)
+          throw new __BrowserOperationError(
+            {
+              operation: i.operation ?? "browser.operation",
+              tabId: r.tabId,
+              reason: "dialog",
+              dialogDetected: true,
+              browserCleanupComplete: true,
+              requestId: i.operationId,
+            },
+            s instanceof Error ? s.message : String(s),
+          );
+        throw s;
+      }
       return (
-        this.throwIfJsDialogBlocksMethod(r.tabId, n),
         Be(i),
         await this.ensureAttachedTab(r.tabId),
         i.prepareDispatch != null && (await V1(i, i.prepareDispatch)),
@@ -25505,6 +25559,9 @@ var Yl = class extends qj {
                   commandParams: o ?? {},
                   ...(i.preserveDebuggerOnTimeout === !0 ? { preserveDebuggerOnTimeout: !0 } : {}),
                   timeoutMs: s,
+                  operationId: i.operationId,
+                  operation: i.operation,
+                  signal: i.signal,
                 };
               if (i.expressionCacheKey == null) return await this.api.executeCdp(a);
               if (!eI(o)) throw new Error("Cached CDP execution requires an expression");
@@ -25516,9 +25573,13 @@ var Yl = class extends qj {
               if (
                 (s === "Debugger unattached" ||
                   (typeof s == "string" && s.includes("Debugger is not attached"))) &&
-                (this.forgetAttachedTab(r.tabId), r.sessionId == null && r.targetId == null)
+                (this.forgetAttachedTab(r.tabId),
+                r.sessionId == null && r.targetId == null && (i.debuggerRetryCount ?? 0) < 1)
               )
-                return this.executeTargetCdp(r, n, o, i);
+                return this.executeTargetCdp(r, n, o, {
+                  ...i,
+                  debuggerRetryCount: (i.debuggerRetryCount ?? 0) + 1,
+                });
               if (Jj(s)) {
                 let a = new Error("Browser Use CDP command timed out");
                 a.name = "CdpCommandTimeoutError";
@@ -26460,6 +26521,11 @@ var nI = " >> internal:control=enter-frame >> ",
   _9 = 1e3,
   iI = y("playwright_dom_snapshot", async (t, e) => {
     let r = de(t),
+      o = {
+        operation: t.client_operation_name ?? "playwright.domSnapshot",
+        operationId: t.client_operation_id,
+        signal: t.client_abort_signal,
+      },
       n = await e.playwright.evaluateOnPlaywrightPage(
         t.tab_id,
         (s) => {
@@ -26481,16 +26547,16 @@ var nI = " >> internal:control=enter-frame >> ",
             });
           return { ...u, iframeRefs: c };
         },
-        { timeoutMs: r },
+        { ...o, timeoutMs: r },
       ),
-      o = e.isIabBackend ? Date.now() + _9 : void 0,
-      i = await sI(e, t.tab_id, n, r, void 0, o);
-    return { dom_snapshot: S9(i) };
+      i = e.isIabBackend ? Date.now() + _9 : void 0,
+      s = await sI(e, t.tab_id, n, r, void 0, i, o);
+    return { dom_snapshot: S9(s) };
   });
-async function sI(t, e, r, n, o, i) {
+async function sI(t, e, r, n, o, i, q) {
   let s = r.iframeRefs.filter((c) => c in r.iframeDepths);
   if (!s.length || (i != null && Date.now() >= i)) return r.full;
-  let a = new Map(await Promise.all(s.map(async (c) => [c, await w9(t, e, c, n, o, i)]))),
+  let a = new Map(await Promise.all(s.map(async (c) => [c, await w9(t, e, c, n, o, i, q)]))),
     u = [];
   for (let c of r.full.split(`
 `)) {
@@ -26518,7 +26584,7 @@ async function sI(t, e, r, n, o, i) {
   return u.join(`
 `);
 }
-async function w9(t, e, r, n, o, i) {
+async function w9(t, e, r, n, o, i, q) {
   try {
     let s = o ? `${o}${nI}aria-ref=${r}` : `aria-ref=${r}`;
     if (i != null && Date.now() >= i) return null;
@@ -26543,9 +26609,9 @@ async function w9(t, e, r, n, o, i) {
             });
           return { ...p, iframeRefs: f };
         },
-        { ...(i == null ? {} : { deadlineMs: i }), retry: !1, timeoutMs: a },
+        { ...q, ...(i == null ? {} : { deadlineMs: i }), retry: !1, timeoutMs: a },
       );
-    return await sI(t, e, u, n, s, i);
+    return await sI(t, e, u, n, s, i, q);
   } catch {
     return null;
   }
@@ -28239,6 +28305,9 @@ var cb = { block: "center", inline: "nearest" },
           return await (${o})(injected, ${ab(n.arg)});
         })()`,
         {
+          operation: n.operation,
+          operationId: n.operationId,
+          signal: n.signal,
           telemetryAttrs: zn({ operation: En("page"), phase: "page_eval" }),
           timeoutMs: n.timeoutMs,
         },
@@ -28985,6 +29054,7 @@ var cb = { block: "center", inline: "nearest" },
             { frameId: n, oopifFrameChain: [], target: e },
             dk,
             {
+              ...r,
               timeoutMs: r.timeoutMs,
               ...(r.deadlineMs == null ? {} : { deadlineMs: r.deadlineMs }),
               telemetryAttrs: zn({ operation: i, phase: "inject_install" }),
@@ -34312,27 +34382,42 @@ var Ib = "executeCdpWithCachedExpression",
       return this.sendRequest("ping");
     }
     executeCdp(r) {
-      return this.sendSessionRequest("executeCdp", r);
+      let { signal: n, operationId: o, operation: i, ...s } = r;
+      return this.sendSessionRequest("executeCdp", s, {
+        signal: n,
+        operationId: o,
+        operation: i,
+        tabId: r.target?.tabId,
+        timeoutMs: r.timeoutMs,
+      });
     }
     async executeCdpWithCachedExpression(r, n) {
+      let { signal: o, operationId: i, operation: s, ...a } = r,
+        u = {
+          signal: o,
+          operationId: i,
+          operation: s,
+          tabId: r.target?.tabId,
+          timeoutMs: r.timeoutMs,
+        };
       if (this.cachedExpressionSupport == null || (await this.cachedExpressionSupport)) {
-        let o = { ...r.commandParams };
-        this.sentCachedExpressions.has(n) && delete o.expression;
-        let i = this.sendSessionRequest(Ib, { ...r, commandParams: o, expressionCacheKey: n });
+        let c = { ...a.commandParams };
+        this.sentCachedExpressions.has(n) && delete c.expression;
+        let d = this.sendSessionRequest(Ib, { ...a, commandParams: c, expressionCacheKey: n }, u);
         (this.sentCachedExpressions.add(n),
           this.cachedExpressionSupport == null &&
-            (this.cachedExpressionSupport = i.then(
+            (this.cachedExpressionSupport = d.then(
               () => !0,
-              (s) => s !== vP,
+              (p) => p !== vP,
             )));
         try {
-          let s = await i;
-          if (s.kind === "executed") return s.result;
-          let a = await this.sendSessionRequest(Ib, { ...r, expressionCacheKey: n });
-          if (a.kind === "executed") return a.result;
+          let p = await d;
+          if (p.kind === "executed") return p.result;
+          let f = await this.sendSessionRequest(Ib, { ...a, expressionCacheKey: n }, u);
+          if (f.kind === "executed") return f.result;
           throw new Error("Cached CDP expression refill failed");
-        } catch (s) {
-          if (s !== vP) throw s;
+        } catch (p) {
+          if (p !== vP) throw p;
         }
       }
       return this.executeCdp(r);
@@ -34397,7 +34482,7 @@ var Ib = "executeCdpWithCachedExpression",
     async close() {
       await this.apiTransport.close?.();
     }
-    sendSessionRequest(r, n) {
+    sendSessionRequest(r, n, p = {}) {
       let o = this.getSessionParams();
       return (
         this.trackTurnEnded &&
@@ -34406,7 +34491,21 @@ var Ib = "executeCdpWithCachedExpression",
             { session_id: o.session_id, turn_id: o.turn_id },
             this.turnEnded,
           ),
-        this.sendRequest(r, { ...n, ...o })
+        this.sendRequest(
+          r,
+          { ...n, ...o },
+          {
+            ...p,
+            ...(p.operationId == null
+              ? {}
+              : {
+                  cancelRequest: {
+                    method: "cancelBrowserOperation",
+                    params: { operationId: p.operationId, ...o },
+                  },
+                }),
+          },
+        )
       );
     }
     getSessionParams() {
@@ -35293,33 +35392,47 @@ async function DG(t, e, r, n) {
   } catch {}
   t.nodeRepl?.setResponseMeta(UP({ backend: e, browserId: r.browserId, currentUrl: o }));
 }
-async function ATe({ elicitationDisplayName: t, globals: e }) {
+async function ATe({
+  elicitationDisplayName: t,
+  globals: e,
+  __serviceMode: __bossServiceMode = false,
+}) {
   (sk(),
     Ve("browser_use_invocation_started", "multi", {
       backend: "multi",
       platform: GP(),
       release: Sn,
     }));
-  let r = e;
+  let r = e,
+    __bossRpc = __bossServiceMode ? null : __createBossBrowserRpc(e);
   try {
-    if (vu() == null) throw new Error(Ch());
+    if (__bossServiceMode && vu() == null) throw new Error(Ch());
   } catch (f) {
     throw (ae(f), f);
   }
-  let n = new fp(qE()),
+  let n = __bossServiceMode ? new fp(qE()) : null,
     o = new Map(),
-    i = (PG ??= VP());
+    i = (PG ??= VP()),
+    __bossTransport;
   (Pb && (await Pb()),
     (Pb = async () => {
-      (await Promise.all([...o.values()].map((f) => f.dispose())), await n.dispose());
+      (__domSnapshotOperations.cancelAll("cancelled"),
+        await Promise.all([...o.values()].map((f) => f.dispose())),
+        await n?.dispose());
     }));
   let s = NG(e),
     a = DP({ displayBridge: s, displayTruncateMaxChars: 1e5 }),
-    [u, c] = await Promise.all([NP(), BP()]),
+    [__bossSetup, c] = await Promise.all([
+      __bossServiceMode
+        ? NP().then((apiManifest) => ({ apiManifest, disabledMemberIds: [...UE()] }))
+        : __bossRpc("setup", { environment: "codex-app" }),
+      BP(),
+    ]),
+    u = __bossSetup.apiManifest,
     d = new gp({
       apiManifest: u,
       documentManifest: c,
-      disabledMemberIds: UE(),
+      disabledMemberIds: new Set(__bossSetup.disabledMemberIds),
       readDocumentation: Rb,
     }),
     p = new Lo({
@@ -35328,82 +35441,111 @@ async function ATe({ elicitationDisplayName: t, globals: e }) {
       onBrowserUsed: ({ type: f }) => {
         e.nodeRepl?.setResponseMeta(hp({ backend: xr(f), params: {} }));
       },
-      transport: new pi({
-        displaySideEffect: a,
-        async executeAgentCommand(f) {
-          let { type: m, ...h } = f,
-            b = kG.find((k) => k.type === m);
-          if (b) return await mu(m, h, async () => b(h, n));
-          if (!("browser_id" in h)) throw new Error("Browser ID must be provided");
-          if (Yf(h.browser_id)) {
-            let k = xr(h.browser_id);
-            $E(k);
-          }
-          let w = await n.get(h.browser_id),
-            A = o.get(w.api);
-          (A == null &&
-            ((A = new sp(w.api, w.id, w.info, {
-              elicitationDisplayName: t,
-              preferredWindowId: n.preferredWindowIdFor(w.info),
-            })),
-            o.set(w.api, A),
-            w.api.addCloseListener(() => {
-              o.delete(w.api);
-            })),
-            rb(A.clientInfo.type),
-            nb());
-          let S = xr(A.clientInfo.type);
-          (mp(e, S, { browserId: A.browserId, params: h }),
-            MP({ browserInfo: A.clientInfo, commandType: m }),
-            HP({ browserInfo: A.clientInfo, commandType: m }));
-          let T = AG.find((k) => k.type === m),
-            O = KT(m, Ve),
-            B = !1,
-            C = !1,
-            v;
-          try {
-            return (
-              (v = await O.run(
-                async () => (
-                  await A.security.ensureCommandAllowed({ type: m, params: h }),
-                  (B = !0),
-                  T
-                    ? await T(h, A)
-                    : await mu(m, h, async () => await A.executeUnhandledCommand({ type: m, ...h }))
-                ),
-              )),
-              (C = !0),
-              v
-            );
-          } catch (k) {
-            throw (k instanceof hi && (await DG(e, S, A, h)), HE(k));
-          } finally {
-            if (B) {
-              let k;
-              try {
-                k = await KP(A, h, { readCurrentUrl: !0 });
-              } catch {
-                k = void 0;
-              }
-              i.recordCommand(m, {
-                backend: S,
-                commandSucceeded: C,
-                context: A,
-                currentUrl: k,
-                globals: e,
-                params: h,
-                result: v,
-              });
+      transport: new pi(
+        (__bossTransport = {
+          displaySideEffect: a,
+          async executeAgentCommand(f, g = {}) {
+            if (!__bossServiceMode) return await __bossRpc("execute", f);
+            if (n == null) throw new Error("Boss投递 service backend is unavailable");
+            let { type: m, ...h } = f,
+              b = kG.find((k) => k.type === m);
+            Object.defineProperties(h, {
+              client_abort_signal: { value: g.signal },
+              client_operation_id: { value: g.operationId },
+              client_operation_name: { value: g.operation },
+              client_operation_tab_id: { value: g.tabId },
+            });
+            if (b) return await mu(m, h, async () => b(h, n));
+            if (!("browser_id" in h)) throw new Error("Browser ID must be provided");
+            if (Yf(h.browser_id)) {
+              let k = xr(h.browser_id);
+              $E(k);
             }
-            O.finish();
-          }
-        },
-      }),
+            let w = await n.get(h.browser_id),
+              A = o.get(w.api);
+            (A == null &&
+              ((A = new sp(w.api, w.id, w.info, {
+                elicitationDisplayName: t,
+                preferredWindowId: n.preferredWindowIdFor(w.info),
+              })),
+              o.set(w.api, A),
+              w.api.addCloseListener(() => {
+                o.delete(w.api);
+              })),
+              rb(A.clientInfo.type),
+              nb());
+            let S = xr(A.clientInfo.type);
+            (mp(e, S, { browserId: A.browserId, params: h }),
+              MP({ browserInfo: A.clientInfo, commandType: m }),
+              HP({ browserInfo: A.clientInfo, commandType: m }));
+            let T = AG.find((k) => k.type === m),
+              O = KT(m, Ve),
+              B = !1,
+              C = !1,
+              v;
+            try {
+              return (
+                (v = await O.run(
+                  async () => (
+                    await A.security.ensureCommandAllowed({ type: m, params: h }),
+                    (B = !0),
+                    T
+                      ? await T(h, A)
+                      : await mu(
+                          m,
+                          h,
+                          async () => await A.executeUnhandledCommand({ type: m, ...h }),
+                        )
+                  ),
+                )),
+                (C = !0),
+                v
+              );
+            } catch (k) {
+              throw (k instanceof hi && (await DG(e, S, A, h)), HE(k));
+            } finally {
+              if (B) {
+                let k;
+                if (!h.client_abort_signal?.aborted) {
+                  try {
+                    k = await KP(A, h, { readCurrentUrl: !0 });
+                  } catch {
+                    k = void 0;
+                  }
+                }
+                i.recordCommand(m, {
+                  backend: S,
+                  commandSucceeded: C,
+                  context: A,
+                  currentUrl: k,
+                  globals: e,
+                  params: h,
+                  result: v,
+                });
+              }
+              O.finish();
+            }
+          },
+        }),
+      ),
     });
   ((r.agent = d.wrapAgent(p)),
     (r.display = a),
     Ve("browser_use_setup"),
     Ve("browser_use_invocation_ready", "multi", { backend: "multi", platform: GP(), release: Sn }));
+  if (__bossServiceMode)
+    return {
+      apiManifest: u,
+      disabledMemberIds: [...__bossSetup.disabledMemberIds],
+      dispose: async () => await Pb?.(),
+      executeAgentCommand: async (command) => await __bossTransport.executeAgentCommand(command),
+    };
+}
+async function __setupBrowserServiceRuntime({
+  elicitationDisplayName = "Boss投递",
+  globals = globalThis,
+} = {}) {
+  return await ATe({ elicitationDisplayName, globals, __serviceMode: true });
 }
 async function KP(t, e, r = {}) {
   if (!OG(e)) return;
@@ -35415,4 +35557,4 @@ async function KP(t, e, r = {}) {
 function OG(t) {
   return typeof t == "object" && t != null && !Array.isArray(t);
 }
-export { ATe as setupBrowserRuntime };
+export { ATe as setupBrowserRuntime, __setupBrowserServiceRuntime as setupBrowserServiceRuntime };

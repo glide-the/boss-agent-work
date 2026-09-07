@@ -6,7 +6,7 @@ WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SOURCE="$WORKSPACE_ROOT/components/electron-app"
 OUTPUT="$WORKSPACE_ROOT/dist/electron-app"
 
-node --test "$SOURCE"/test/*.test.mjs
+bun test "$SOURCE/test"
 
 case "$OUTPUT" in
   "$WORKSPACE_ROOT"/dist/*) ;;

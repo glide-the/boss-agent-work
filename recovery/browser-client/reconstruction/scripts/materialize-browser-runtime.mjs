@@ -59,6 +59,9 @@ function replaceProcessShim(source) {
     'import { createBrowserSecurityClass as __createBrowserSecurityClass } from "./security/browser-security.ts";',
     'import { siteStatusEnvironment as __siteStatusEnvironment } from "./security/policy-config.ts";',
     'import { createDisplay as DP, createNodeReplDisplayBridge as NG } from "./runtime/node-repl-display.ts";',
+    'import { CancellableJsonRpcEndpoint as __CancellableJsonRpcEndpoint } from "./runtime/json-rpc-endpoint.ts";',
+    'import { BrowserOperationError as __BrowserOperationError, domSnapshotOperations as __domSnapshotOperations, throwIfBrowserOperationAborted as __throwIfBrowserOperationAborted } from "./runtime/browser-operation.ts";',
+    'import { createBossBrowserRpc as __createBossBrowserRpc } from "./runtime/trusted-service.ts";',
     "__installProcessShim();",
   ].join("\n");
   return {
@@ -69,6 +72,129 @@ function replaceProcessShim(source) {
       classification: "reconstructed",
     },
   };
+}
+
+function addTrustedServiceRpcAdapter(source, rawInput) {
+  const mappings = [];
+  const replace = (before, after, label, rawAnchor) => {
+    source = replaceExactlyOnce(source, before, after, label);
+    const rawStart = rawInput.indexOf(rawAnchor);
+    if (rawStart < 0) throw new Error(`${label} raw anchor was not found.`);
+    mappings.push({ start: rawStart, end: rawStart + rawAnchor.length });
+  };
+
+  replace(
+    "async function ATe({ elicitationDisplayName: t, globals: e }) {",
+    "async function ATe({ elicitationDisplayName: t, globals: e, __serviceMode: __bossServiceMode = false }) {",
+    "trusted service setup mode",
+    "async function ATe({elicitationDisplayName:t,globals:e})",
+  );
+  replace(
+    `  let r = e;
+  try {
+    if (vu() == null) throw new Error(Ch());
+  } catch (f) {
+    throw (ae(f), f);
+  }
+  let n = new fp(qE()),
+    o = new Map(),
+    i = (PG ??= VP());`,
+    `  let r = e,
+    __bossRpc = __bossServiceMode ? null : __createBossBrowserRpc(e);
+  try {
+    if (__bossServiceMode && vu() == null) throw new Error(Ch());
+  } catch (f) {
+    throw (ae(f), f);
+  }
+  let n = __bossServiceMode ? new fp(qE()) : null,
+    o = new Map(),
+    i = (PG ??= VP()),
+    __bossTransport;`,
+    "trusted service transport selection",
+    "let r=e;try{if(vu()==null)",
+  );
+  replace(
+    "        await n.dispose());",
+    "        await n?.dispose());",
+    "optional service backend disposal",
+    "await n.dispose()",
+  );
+  replace(
+    `    [u, c] = await Promise.all([NP(), BP()]),
+    d = new gp({
+      apiManifest: u,
+      documentManifest: c,
+      disabledMemberIds: UE(),`,
+    `    [__bossSetup, c] = await Promise.all([
+      __bossServiceMode
+        ? NP().then((apiManifest) => ({ apiManifest, disabledMemberIds: [...UE()] }))
+        : __bossRpc("setup", { environment: "codex-app" }),
+      BP(),
+    ]),
+    u = __bossSetup.apiManifest,
+    d = new gp({
+      apiManifest: u,
+      documentManifest: c,
+      disabledMemberIds: new Set(__bossSetup.disabledMemberIds),`,
+    "trusted service setup handshake",
+    "[u,c]=await Promise.all([NP(),BP()])",
+  );
+  replace(
+    "      transport: new pi({",
+    "      transport: new pi((__bossTransport = {",
+    "capture service command transport",
+    "transport:new pi({",
+  );
+  replace(
+    `        async executeAgentCommand(f, g = {}) {
+          let { type: m, ...h } = f,`,
+    `        async executeAgentCommand(f, g = {}) {
+          if (!__bossServiceMode) return await __bossRpc("execute", f);
+          if (n == null) throw new Error("Boss投递 service backend is unavailable");
+          let { type: m, ...h } = f,`,
+    "route client commands through personal service",
+    "async executeAgentCommand(f)",
+  );
+  replace(
+    `        },
+      }),
+    });
+  ((r.agent = d.wrapAgent(p)),`,
+    `        },
+      })),
+    });
+  ((r.agent = d.wrapAgent(p)),`,
+    "close captured service transport",
+    "}})});r.agent=d.wrapAgent(p)",
+  );
+  replace(
+    `    Ve("browser_use_setup"),
+    Ve("browser_use_invocation_ready", "multi", { backend: "multi", platform: GP(), release: Sn }));
+}`,
+    `    Ve("browser_use_setup"),
+    Ve("browser_use_invocation_ready", "multi", { backend: "multi", platform: GP(), release: Sn }));
+  if (__bossServiceMode)
+    return {
+      apiManifest: u,
+      disabledMemberIds: [...__bossSetup.disabledMemberIds],
+      dispose: async () => await Pb?.(),
+      executeAgentCommand: async (command) => await __bossTransport.executeAgentCommand(command),
+    };
+}
+async function __setupBrowserServiceRuntime({ elicitationDisplayName = "Boss投递", globals = globalThis } = {}) {
+  return await ATe({ elicitationDisplayName, globals, __serviceMode: true });
+}`,
+    "expose personal service runtime",
+    'Ve("browser_use_setup")',
+  );
+  replace(
+    "export { ATe as setupBrowserRuntime };",
+    "export { ATe as setupBrowserRuntime, __setupBrowserServiceRuntime as setupBrowserServiceRuntime };",
+    "personal service runtime export",
+    "export{ATe as setupBrowserRuntime}",
+  );
+
+  return { source, mapping: { inputRanges: mappings, classification: "reconstructed" } };
 }
 
 function replaceFormattedNodeReplDisplay(source, rawInput) {
@@ -317,6 +443,377 @@ function replaceFormattedTabs(source, rawInput) {
   };
 }
 
+function replaceExactlyOnce(source, before, after, label) {
+  const first = source.indexOf(before);
+  if (first < 0 || source.indexOf(before, first + before.length) >= 0) {
+    throw new Error(`${label} expected exactly one formatted anchor.`);
+  }
+  return `${source.slice(0, first)}${after}${source.slice(first + before.length)}`;
+}
+
+function addBrowserOperationCancellation(source, rawInput) {
+  const mappings = [];
+  const replace = (before, after, label, rawAnchor) => {
+    source = replaceExactlyOnce(source, before, after, label);
+    const rawStart = rawInput.indexOf(rawAnchor);
+    if (rawStart < 0) throw new Error(`${label} raw anchor was not found.`);
+    mappings.push({ start: rawStart, end: rawStart + rawAnchor.length });
+  };
+
+  replace(
+    'var uv = l.object({ browser_id: l.string(), tab_id: l.string() }),',
+    `var uv = l.object({
+    browser_id: l.string(),
+    tab_id: l.string(),
+    timeout_ms: l.number().int().positive().optional(),
+  }),`,
+    "DOM snapshot command timeout schema",
+    "var uv=l.object({browser_id:l.string(),tab_id:l.string()})",
+  );
+  replace(
+    `    async domSnapshot() {
+      return (await this.#r.send({ command: Za.create({ browser_id: this.#e, tab_id: this.#t }) }))
+        .dom_snapshot;
+    }`,
+    `    async domSnapshot(e = {}) {
+      let r = Number(this.#t);
+      return await __domSnapshotOperations.run({
+        key: \`${"${this.#e}:${this.#t}"}\`,
+        operation: "playwright.domSnapshot",
+        tabId: r,
+        timeoutMs: e.timeoutMs,
+        signal: e.signal,
+        execute: async ({ operationId: n, signal: o, timeoutMs: i }) =>
+          (
+            await this.#r.send({
+              command: Za.create({ browser_id: this.#e, tab_id: this.#t, timeout_ms: i }),
+              operation: "playwright.domSnapshot",
+              operationId: n,
+              signal: o,
+              tabId: r,
+              timeoutMs: i,
+            })
+          ).dom_snapshot,
+      });
+    }`,
+    "DOM snapshot public cancellation API",
+    "async domSnapshot(){",
+  );
+  replace(
+    `    async send({ command: e, timeoutMs: r }) {
+      let n = e.toJSON(),
+        o = await this.executeAgentCommand({
+          ...n,
+          client_timeout_ms: typeof r == "number" && r > 0 ? r : void 0,
+        }),
+        i = await e6(o, this.displaySideEffect);
+      if (i == null) throw new Error("transport send returned empty response");
+      return i;
+    }`,
+    `    async send({ command: e, timeoutMs: r, signal: n, operationId: o, operation: i, tabId: s }) {
+      let a = e.toJSON(),
+        u = await this.executeAgentCommand({
+          ...a,
+          client_timeout_ms: typeof r == "number" && r > 0 ? r : void 0,
+        }, { signal: n, operationId: o, operation: i, tabId: s });
+      let c = await e6(u, this.displaySideEffect);
+      if (c == null) throw new Error("transport send returned empty response");
+      return c;
+    }`,
+    "function transport cancellation metadata",
+    "async send({command:e,timeoutMs:r})",
+  );
+  replace(
+    `};
+function fi(t, e) {
+  return new Error(\`${"${t}"} does not support command "${"${e.type}"}".\`);
+}`,
+    `};
+du = __CancellableJsonRpcEndpoint;
+function fi(t, e) {
+  return new Error(\`${"${t}"} does not support command "${"${e.type}"}".\`);
+}`,
+    "cancellable JSON-RPC endpoint adapter",
+    "function fi(t,e)",
+  );
+  replace(
+    `    async executeTargetCdp(r, n, o, i = {}) {
+      return (
+        this.throwIfJsDialogBlocksMethod(r.tabId, n),`,
+    `    async executeTargetCdp(r, n, o, i = {}) {
+      __throwIfBrowserOperationAborted(
+        i.signal,
+        i.operation ?? "browser.operation",
+        r.tabId,
+        i.operationId,
+      );
+      try {
+        this.throwIfJsDialogBlocksMethod(r.tabId, n);
+      } catch (s) {
+        if (i.operationId != null)
+          throw new __BrowserOperationError(
+            {
+              operation: i.operation ?? "browser.operation",
+              tabId: r.tabId,
+              reason: "dialog",
+              dialogDetected: true,
+              browserCleanupComplete: true,
+              requestId: i.operationId,
+            },
+            s instanceof Error ? s.message : String(s),
+          );
+        throw s;
+      }
+      return (`,
+    "CDP abort and dialog preflight",
+    "async executeTargetCdp(r,n,o,i={})",
+  );
+  replace(
+    `                  timeoutMs: s,
+                };`,
+    `                  timeoutMs: s,
+                  operationId: i.operationId,
+                  operation: i.operation,
+                  signal: i.signal,
+                };`,
+    "CDP operation metadata",
+    "preserveDebuggerOnTimeout",
+  );
+  replace(
+    `                (this.forgetAttachedTab(r.tabId), r.sessionId == null && r.targetId == null)
+              )
+                return this.executeTargetCdp(r, n, o, i);`,
+    `                (this.forgetAttachedTab(r.tabId),
+                r.sessionId == null &&
+                  r.targetId == null &&
+                  (i.debuggerRetryCount ?? 0) < 1)
+              )
+                return this.executeTargetCdp(r, n, o, {
+                  ...i,
+                  debuggerRetryCount: (i.debuggerRetryCount ?? 0) + 1,
+                });`,
+    "bounded debugger reattach retry",
+    "Debugger unattached",
+  );
+  replace(
+    `  iI = y("playwright_dom_snapshot", async (t, e) => {
+    let r = de(t),
+      n = await e.playwright.evaluateOnPlaywrightPage(`,
+    `  iI = y("playwright_dom_snapshot", async (t, e) => {
+    let r = de(t),
+      o = {
+        operation: t.client_operation_name ?? "playwright.domSnapshot",
+        operationId: t.client_operation_id,
+        signal: t.client_abort_signal,
+      },
+      n = await e.playwright.evaluateOnPlaywrightPage(`,
+    "snapshot handler operation context",
+    'iI=y("playwright_dom_snapshot"',
+  );
+  replace(
+    `        { timeoutMs: r },
+      ),
+      o = e.isIabBackend ? Date.now() + _9 : void 0,
+      i = await sI(e, t.tab_id, n, r, void 0, o);
+    return { dom_snapshot: S9(i) };
+  });
+async function sI(t, e, r, n, o, i) {`,
+    `        { ...o, timeoutMs: r },
+      ),
+      i = e.isIabBackend ? Date.now() + _9 : void 0,
+      s = await sI(e, t.tab_id, n, r, void 0, i, o);
+    return { dom_snapshot: S9(s) };
+  });
+async function sI(t, e, r, n, o, i, q) {`,
+    "snapshot handler signal propagation",
+    "function sI(t,e,r,n,o,i)",
+  );
+  replace(
+    "s.map(async (c) => [c, await w9(t, e, c, n, o, i)])",
+    "s.map(async (c) => [c, await w9(t, e, c, n, o, i, q)])",
+    "iframe snapshot operation context",
+    "s.map(async c=>[c,await w9(t,e,c,n,o,i)])",
+  );
+  replace(
+    "async function w9(t, e, r, n, o, i) {",
+    "async function w9(t, e, r, n, o, i, q) {",
+    "iframe snapshot signature",
+    "async function w9(t,e,r,n,o,i)",
+  );
+  replace(
+    `{ ...(i == null ? {} : { deadlineMs: i }), retry: !1, timeoutMs: a },
+      );
+    return await sI(t, e, u, n, s, i);`,
+    `{ ...q, ...(i == null ? {} : { deadlineMs: i }), retry: !1, timeoutMs: a },
+      );
+    return await sI(t, e, u, n, s, i, q);`,
+    "iframe snapshot abort propagation",
+    "retry:!1,timeoutMs:a",
+  );
+  replace(
+    `        {
+          telemetryAttrs: zn({ operation: En("page"), phase: "page_eval" }),`,
+    `        {
+          operation: n.operation,
+          operationId: n.operationId,
+          signal: n.signal,
+          telemetryAttrs: zn({ operation: En("page"), phase: "page_eval" }),`,
+    "Playwright page evaluation operation propagation",
+    'phase:"page_eval"',
+  );
+  replace(
+    `            dk,
+            {
+              timeoutMs: r.timeoutMs,`,
+    `            dk,
+            {
+              ...r,
+              timeoutMs: r.timeoutMs,`,
+    "Playwright injection operation propagation",
+    "timeoutMs:r.timeoutMs",
+  );
+  replace(
+    `    executeCdp(r) {
+      return this.sendSessionRequest("executeCdp", r);
+    }
+    async executeCdpWithCachedExpression(r, n) {
+      if (this.cachedExpressionSupport == null || (await this.cachedExpressionSupport)) {
+        let o = { ...r.commandParams };
+        this.sentCachedExpressions.has(n) && delete o.expression;
+        let i = this.sendSessionRequest(Ib, { ...r, commandParams: o, expressionCacheKey: n });
+        (this.sentCachedExpressions.add(n),
+          this.cachedExpressionSupport == null &&
+            (this.cachedExpressionSupport = i.then(
+              () => !0,
+              (s) => s !== vP,
+            )));
+        try {
+          let s = await i;
+          if (s.kind === "executed") return s.result;
+          let a = await this.sendSessionRequest(Ib, { ...r, expressionCacheKey: n });
+          if (a.kind === "executed") return a.result;
+          throw new Error("Cached CDP expression refill failed");
+        } catch (s) {
+          if (s !== vP) throw s;
+        }
+      }
+      return this.executeCdp(r);
+    }`,
+    `    executeCdp(r) {
+      let { signal: n, operationId: o, operation: i, ...s } = r;
+      return this.sendSessionRequest("executeCdp", s, {
+        signal: n,
+        operationId: o,
+        operation: i,
+        tabId: r.target?.tabId,
+        timeoutMs: r.timeoutMs,
+      });
+    }
+    async executeCdpWithCachedExpression(r, n) {
+      let { signal: o, operationId: i, operation: s, ...a } = r,
+        u = {
+          signal: o,
+          operationId: i,
+          operation: s,
+          tabId: r.target?.tabId,
+          timeoutMs: r.timeoutMs,
+        };
+      if (this.cachedExpressionSupport == null || (await this.cachedExpressionSupport)) {
+        let c = { ...a.commandParams };
+        this.sentCachedExpressions.has(n) && delete c.expression;
+        let d = this.sendSessionRequest(Ib, { ...a, commandParams: c, expressionCacheKey: n }, u);
+        (this.sentCachedExpressions.add(n),
+          this.cachedExpressionSupport == null &&
+            (this.cachedExpressionSupport = d.then(
+              () => !0,
+              (p) => p !== vP,
+            )));
+        try {
+          let p = await d;
+          if (p.kind === "executed") return p.result;
+          let f = await this.sendSessionRequest(Ib, { ...a, expressionCacheKey: n }, u);
+          if (f.kind === "executed") return f.result;
+          throw new Error("Cached CDP expression refill failed");
+        } catch (p) {
+          if (p !== vP) throw p;
+        }
+      }
+      return this.executeCdp(r);
+    }`,
+    "session CDP cancellation transport",
+    "executeCdp(r){return this.sendSessionRequest",
+  );
+  replace(
+    `    sendSessionRequest(r, n) {
+      let o = this.getSessionParams();`,
+    `    sendSessionRequest(r, n, p = {}) {
+      let o = this.getSessionParams();`,
+    "session request cancellation options",
+    "sendSessionRequest(r,n)",
+  );
+  replace(
+    "        this.sendRequest(r, { ...n, ...o })",
+    `        this.sendRequest(r, { ...n, ...o }, {
+          ...p,
+          ...(p.operationId == null
+            ? {}
+            : {
+                cancelRequest: {
+                  method: "cancelBrowserOperation",
+                  params: { operationId: p.operationId, ...o },
+                },
+              }),
+        })`,
+    "session cancellation command",
+    "this.sendRequest(r,{...n,...o})",
+  );
+  replace(
+    "      (await Promise.all([...o.values()].map((f) => f.dispose())), await n.dispose());",
+    `      (__domSnapshotOperations.cancelAll("cancelled"),
+        await Promise.all([...o.values()].map((f) => f.dispose())),
+        await n.dispose());`,
+    "runtime reset cancellation",
+    "await Promise.all([...o.values()].map(f=>f.dispose()))",
+  );
+  replace(
+    `        async executeAgentCommand(f) {
+          let { type: m, ...h } = f,
+            b = kG.find((k) => k.type === m);`,
+    `        async executeAgentCommand(f, g = {}) {
+          let { type: m, ...h } = f,
+            b = kG.find((k) => k.type === m);
+          Object.defineProperties(h, {
+            client_abort_signal: { value: g.signal },
+            client_operation_id: { value: g.operationId },
+            client_operation_name: { value: g.operation },
+            client_operation_tab_id: { value: g.tabId },
+          });`,
+    "agent command cancellation context",
+    "async executeAgentCommand(f)",
+  );
+  replace(
+    `              try {
+                k = await KP(A, h, { readCurrentUrl: !0 });
+              } catch {
+                k = void 0;
+              }`,
+    `              if (!h.client_abort_signal?.aborted) {
+                try {
+                  k = await KP(A, h, { readCurrentUrl: !0 });
+                } catch {
+                  k = void 0;
+                }
+              }`,
+    "post-cancellation context suppression",
+    "k=await KP(A,h,{readCurrentUrl:!0})",
+  );
+
+  return {
+    source,
+    mapping: { inputRanges: mappings, classification: "reconstructed" },
+  };
+}
+
 async function main() {
   if (unexpectedArguments.length > 0) {
     throw new Error("Usage: bun run materialize-runtime [--force]");
@@ -358,7 +855,9 @@ async function main() {
     originSessionPolicyResult.source,
     input,
   );
-  const formatted = await format(displayResult.source, {
+  const cancellationResult = addBrowserOperationCancellation(displayResult.source, input);
+  const trustedServiceResult = addTrustedServiceRpcAdapter(cancellationResult.source, input);
+  const formatted = await format(trustedServiceResult.source, {
     parser: "babel",
     printWidth: 100,
     semi: true,
@@ -423,6 +922,22 @@ async function main() {
         ...displayResult.mapping,
         target:
           "components/codex-plugin/src/browser-client/runtime/node-repl-display.ts",
+        confidence: "confirmed",
+      },
+      browserOperationCancellation: {
+        ...cancellationResult.mapping,
+        target:
+          "components/codex-plugin/src/browser-client/runtime/browser-operation.ts",
+        supportingTarget:
+          "components/codex-plugin/src/browser-client/runtime/json-rpc-endpoint.ts",
+        confidence: "confirmed",
+      },
+      trustedServiceRpcAdapter: {
+        ...trustedServiceResult.mapping,
+        target:
+          "components/codex-plugin/src/browser-client/runtime/trusted-service.ts",
+        serviceEntry:
+          "components/codex-plugin/src/browser-client/browser-service.ts",
         confidence: "confirmed",
       },
     },

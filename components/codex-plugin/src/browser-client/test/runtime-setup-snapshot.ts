@@ -5,12 +5,21 @@ interface BrowserRuntimeModule {
   }): Promise<void>;
 }
 
+interface BrowserServiceModule {
+  handleRpc(request: unknown): Promise<unknown>;
+}
+
 const runtimePath = process.argv[2];
 if (runtimePath == null) throw new Error("Runtime path is required.");
+const servicePath = process.argv[3];
 
 const hooks: unknown[] = [];
 const responseMeta: unknown[] = [];
-const nodeRepl = {
+let rpcCalls = 0;
+const rpcServices: string[] = [];
+const nodeRepl: Record<string, unknown> & {
+  rpc?: (service: string, request: unknown) => Promise<unknown>;
+} = {
   env: {},
   config: {
     async readToml(): Promise<Record<string, never>> {
@@ -38,6 +47,14 @@ const nodeRepl = {
 };
 
 Object.assign(globalThis, { nodeRepl });
+if (servicePath != null) {
+  const service = (await import(servicePath)) as BrowserServiceModule;
+  nodeRepl.rpc = async (serviceName, request) => {
+    rpcCalls += 1;
+    rpcServices.push(serviceName);
+    return await service.handleRpc(request);
+  };
+}
 const runtime = (await import(runtimePath)) as BrowserRuntimeModule;
 const logged: unknown[] = [];
 const globals: Record<string, unknown> = {
@@ -68,6 +85,8 @@ try {
       hooks: hooks.length,
       responseMeta,
       logged,
+      rpcCalls,
+      rpcServices,
     }),
   );
 } catch (error) {
@@ -76,6 +95,8 @@ try {
       ok: false,
       name: error instanceof Error ? error.name : typeof error,
       message: error instanceof Error ? error.message : String(error),
+      rpcCalls,
+      rpcServices,
     }),
   );
 }

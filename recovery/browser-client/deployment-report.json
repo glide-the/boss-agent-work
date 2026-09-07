@@ -1,26 +1,28 @@
 {
   "action": "deploy",
-  "createdAt": "2026-08-18T15:19:07.460Z",
+  "createdAt": "2026-09-07T04:58:55.349Z",
   "backup": {
     "fileCount": 344,
     "sha256": "85d1bc4f7d456ef75eceab7df6159ebfdfce23de0af51175ec9ba2dc9e579964"
   },
   "candidate": {
-    "fileCount": 345,
-    "sha256": "6c7a8908df911bf0373fe7eba313de5294a4c56f57e0e33b209d6ad509ae628b"
+    "fileCount": 347,
+    "sha256": "4e23388eb38e5a8ae2a33ac6d2de5c167610113363f5faa0e267b07020542fc9"
   },
   "deployed": {
-    "fileCount": 344,
-    "sha256": "0db088407c9a911bb1d25f36c6385c4a1d036eed5228db79d3ea123c0f5c6c7a"
+    "fileCount": 346,
+    "sha256": "13b28f3c2cfea2df13324b325a96d82d6f386eb19378f7cc4c2a53a49ed3f155"
   },
   "deployedOutputs": [
     "browser-client.mjs",
+    "browser-service.mjs",
     "check-extension-installed.js",
     "check-native-host-manifest.js",
     "chrome-is-running.js",
     "extension-id.json",
     "installManifest.mjs",
     "installed-browsers.js",
+    "launch-browser-service.mjs",
     "open-chrome-window.js",
     "patch-browser-client-site-status.mjs",
     "site-status-policy.mjs",

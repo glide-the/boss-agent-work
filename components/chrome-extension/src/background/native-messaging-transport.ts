@@ -3,6 +3,8 @@ import type { NativeHostStatus } from '../types/messages';
 
 const RECONNECT_ALARM_PREFIX = 'native-transport-reconnect';
 const RECONNECT_DELAY_MS = 5_000;
+const MAX_RECONNECT_DELAY_MS = 30_000;
+const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_ALARM_PERIOD_MINUTES = 30_000 / 60_000;
 
 type PendingHostRequest = {
@@ -21,7 +23,7 @@ export class NativeMessagingTransport {
 
   constructor(
     private readonly application = 'com.openai.codexextension.dev',
-    private readonly options: { onStatusChange?: (status: NativeHostStatus) => void } = {},
+    private readonly options: { onStatusChange?: (status: NativeHostStatus) => void; onDisconnect?: () => void } = {},
   ) {
     this.status = { state: 'disconnected', hostName: application, lastChecked: Date.now(), reconnectAttempt: 0 };
     chrome.alarms.onAlarm.addListener((alarm: any) => {
@@ -37,7 +39,9 @@ export class NativeMessagingTransport {
   sendMessage(message: JsonRpcMessage): void {
     if (!this.port) {
       this.scheduleReconnect();
-      throw new Error('Native transport is disconnected; reconnect is pending');
+      throw new Error(this.reconnectAttempt >= MAX_RECONNECT_ATTEMPTS
+        ? 'Native transport is disconnected; reconnect limit reached'
+        : 'Native transport is disconnected; reconnect is pending');
     }
     this.port.postMessage(message);
   }
@@ -45,7 +49,9 @@ export class NativeMessagingTransport {
   requestHost<TResult = unknown>(method: string, params?: unknown): Promise<TResult> {
     if (!this.port) {
       this.scheduleReconnect();
-      return Promise.reject(new Error('Native transport is disconnected; reconnect is pending'));
+      return Promise.reject(new Error(this.reconnectAttempt >= MAX_RECONNECT_ATTEMPTS
+        ? 'Native transport is disconnected; reconnect limit reached'
+        : 'Native transport is disconnected; reconnect is pending'));
     }
     const id = this.createHostRequestId();
     const request: JsonRpcRequest = { jsonrpc: '2.0', id, method, ...(params === undefined ? {} : { params }) };
@@ -95,7 +101,9 @@ export class NativeMessagingTransport {
     });
     port.onDisconnect.addListener(() => {
       this.port = null;
+      this.reconnectAttempt = 0;
       this.rejectPendingHostRequests(new Error('Native transport disconnected'));
+      this.options.onDisconnect?.();
       this.updateStatus('disconnected', { error: chrome.runtime?.lastError?.message });
       this.scheduleReconnect();
     });
@@ -126,18 +134,27 @@ export class NativeMessagingTransport {
 
   private scheduleReconnect(): void {
     if (this.port) return;
-    this.reconnectAttempt += 1;
-    this.scheduleReconnectTimeout();
+    if (this.reconnectAttempt >= MAX_RECONNECT_ATTEMPTS) {
+      this.clearReconnectTimeout();
+      void chrome.alarms.clear(this.reconnectAlarmName);
+      this.updateStatus('disconnected', {
+        error: this.status.error ?? 'Native transport reconnect limit reached',
+        nextRetryMs: undefined,
+      });
+      return;
+    }
+    const delayMs = this.currentReconnectDelayMs();
+    this.scheduleReconnectTimeout(delayMs);
     void this.ensureReconnectAlarm();
-    this.updateStatus('reconnecting', { error: this.status.error, nextRetryMs: RECONNECT_DELAY_MS });
+    this.updateStatus('reconnecting', { error: this.status.error, nextRetryMs: delayMs });
   }
 
-  private scheduleReconnectTimeout(): void {
+  private scheduleReconnectTimeout(delayMs: number): void {
     if (this.reconnectTimeoutId != null) return;
     this.reconnectTimeoutId = setTimeout(() => {
       this.reconnectTimeoutId = null;
       this.runReconnectAttempt();
-    }, RECONNECT_DELAY_MS);
+    }, delayMs);
   }
 
   private clearReconnectTimeout(): void {
@@ -154,8 +171,16 @@ export class NativeMessagingTransport {
   private runReconnectAttempt(): void {
     if (this.port) return;
     this.clearReconnectTimeout();
+    if (this.reconnectAttempt >= MAX_RECONNECT_ATTEMPTS) {
+      this.scheduleReconnect();
+      return;
+    }
     this.reconnectAttempt += 1;
     if (!this.connect('reconnecting')) this.scheduleReconnect();
+  }
+
+  private currentReconnectDelayMs(): number {
+    return Math.min(RECONNECT_DELAY_MS * (2 ** this.reconnectAttempt), MAX_RECONNECT_DELAY_MS);
   }
 
   private updateStatus(state: NativeHostStatus['state'], extra: Partial<NativeHostStatus> = {}): void {

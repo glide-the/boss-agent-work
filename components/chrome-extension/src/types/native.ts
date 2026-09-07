@@ -14,7 +14,7 @@ export interface JsonRpcSuccess<TResult = unknown> {
 export interface JsonRpcFailure {
   jsonrpc: '2.0';
   id: string | number;
-  error: { code?: number; message: string; data?: unknown };
+  error: { code?: number | string; message: string; data?: unknown };
 }
 
 export type JsonRpcMessage = JsonRpcRequest | JsonRpcSuccess | JsonRpcFailure;

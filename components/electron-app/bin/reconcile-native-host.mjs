@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import {
   parseManualInstallArguments,
@@ -9,10 +9,10 @@ import {
 const usage = `Boss投递 Native Host 手动 reconcile
 
 Usage:
-  node bin/reconcile-native-host.mjs [options]
+  bun bin/reconcile-native-host.mjs [options]
 
 Options:
-  --dry-run                  只解析并检查路径，不写 manifest 或 registry
+  --dry-run                  检查路径、用户配置、指纹和运行时兼容性，不写入
   --json                     输出 JSON
   --codex-home PATH          Codex 数据目录，默认 CODEX_HOME 或 ~/.codex
   --version-root PATH        已安装的 Boss投递版本目录
@@ -20,6 +20,7 @@ Options:
   --codex-cli PATH           Codex CLI 可执行文件
   --node PATH                Electron 配套 Node 可执行文件
   --node-repl PATH           Electron 配套 node_repl 可执行文件
+  --expected-browser-client-sha256 HEX  比较受审查产物的 SHA-256，不授予信任
   -h, --help                 显示帮助
 `;
 
@@ -40,7 +41,10 @@ try {
     } else {
       const result = await reconcileManualInstall(plan);
       print({
-        correct: true,
+        nativeHostRegistered: true,
+        connectionVerified: result.connectionVerified,
+        backupPath: result.backupPath,
+        notice: result.notice,
         versionRoot: result.versionRoot,
         latestRoot: result.latestRoot,
         latestAction: result.latestAction,

@@ -31094,6 +31094,12 @@ async function ATe({
       executeAgentCommand: async (command) => await __bossTransport.executeAgentCommand(command)
     };
 }
+async function __setupBrowserServiceRuntime({
+  elicitationDisplayName = "Boss投递",
+  globals = globalThis
+} = {}) {
+  return await ATe({ elicitationDisplayName, globals, __serviceMode: true });
+}
 async function KP(t26, e, r = {}) {
   if (!OG(e))
     return;
@@ -31106,6 +31112,51 @@ async function KP(t26, e, r = {}) {
 function OG(t26) {
   return typeof t26 == "object" && t26 != null && !Array.isArray(t26);
 }
+
+// browser-service.ts
+function ping(params) {
+  const nonce = typeof params === "object" && params !== null && "nonce" in params ? String(params.nonce) : "";
+  return {
+    nativePipeAvailable: typeof globalThis.nodeRepl?.nativePipe?.createConnection === "function",
+    nonce,
+    protocolVersion: 1,
+    service: "boss_browser"
+  };
+}
+var runtime = null;
+async function setup(params) {
+  if (params !== undefined && (typeof params !== "object" || params === null)) {
+    throw new Error("Invalid boss_browser setup parameters");
+  }
+  if (runtime !== null)
+    await runtime.dispose();
+  runtime = await __setupBrowserServiceRuntime({
+    elicitationDisplayName: "Boss投递",
+    globals: globalThis
+  });
+  return {
+    apiManifest: runtime.apiManifest,
+    disabledMemberIds: runtime.disabledMemberIds
+  };
+}
+async function execute(params) {
+  if (runtime === null) {
+    throw new Error("Boss投递 browser service has not been initialized");
+  }
+  return await runtime.executeAgentCommand(params);
+}
+async function handleRpc(request2) {
+  if (request2 === null || typeof request2 !== "object") {
+    throw new Error("Invalid boss_browser service request");
+  }
+  if (request2.method === "ping")
+    return ping(request2.params);
+  if (request2.method === "setup")
+    return await setup(request2.params);
+  if (request2.method === "execute")
+    return await execute(request2.params);
+  throw new Error(`Unsupported boss_browser service request: ${String(request2.method)}`);
+}
 export {
-  ATe as setupBrowserRuntime
+  handleRpc
 };
