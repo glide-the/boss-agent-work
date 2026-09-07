@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "boss_repl": {
+      "command": "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node",
+      "args": ["./scripts/launch-browser-service.mjs"],
+      "cwd": ".",
+      "enabled": true,
+      "enabled_tools": ["js", "js_reset"],
+      "omit_tools_from": ["code_mode"],
+      "startup_timeout_sec": 120,
+      "tools": {
+        "js": {
+          "output_token_limit": 25000
+        }
+      },
+      "env_vars": [
+        "CODEX_HOME",
+        "BOSS_PLUGIN_NODE_PATH",
+        "BOSS_PLUGIN_NODE_REPL_PATH"
+      ]
+    }
+  }
+}

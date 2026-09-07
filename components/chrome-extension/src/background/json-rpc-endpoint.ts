@@ -91,7 +91,16 @@ export class JsonRpcEndpoint {
       const result = await handler(request.params);
       this.transport.sendMessage({ jsonrpc: '2.0', id: request.id, result });
     } catch (error) {
-      this.transport.sendMessage({ jsonrpc: '2.0', id: request.id, error: { code: 1, message: error instanceof Error ? error.message : String(error) } });
+      const structured = typeof error === 'object' && error !== null ? error as { code?: number | string; data?: unknown } : {};
+      this.transport.sendMessage({
+        jsonrpc: '2.0',
+        id: request.id,
+        error: {
+          code: typeof structured.code === 'number' || typeof structured.code === 'string' ? structured.code : 1,
+          message: error instanceof Error ? error.message : String(error),
+          ...(structured.data === undefined ? {} : { data: structured.data }),
+        },
+      });
     }
   }
 }

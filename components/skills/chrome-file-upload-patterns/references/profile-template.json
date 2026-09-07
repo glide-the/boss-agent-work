@@ -1,0 +1,48 @@
+{
+  "site_id": "replace-me",
+  "site_name": "Replace Me",
+  "domains": [
+    "example.invalid"
+  ],
+  "route_patterns": [
+    "/upload"
+  ],
+  "purposes": [
+    "document-attachment"
+  ],
+  "control_type": "custom-trigger-filechooser",
+  "status": "hypothesis",
+  "locators": [
+    {
+      "kind": "role",
+      "value": "button:Upload",
+      "role": "visible-trigger",
+      "confidence": "hypothesis"
+    }
+  ],
+  "file_input": {
+    "accept_observed": null,
+    "multiple_observed": null
+  },
+  "activation": {
+    "method": "filechooser-event",
+    "steps": [
+      "Start waiting for the filechooser event",
+      "Click the verified visible trigger",
+      "Await the chooser",
+      "Set the selected files"
+    ],
+    "selection_behavior": "unknown"
+  },
+  "verification": [
+    {
+      "stage": "staged",
+      "signal": "replace-with-observed-signal",
+      "expected": "replace-with-observed-value"
+    }
+  ],
+  "known_failures": [],
+  "permissions": [],
+  "last_verified": null,
+  "evidence": "Replace with dated, sanitized observation notes."
+}

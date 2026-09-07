@@ -37,6 +37,10 @@ test("manual installer dry-run plan validates an isolated installed plugin and R
   const files = [
     path.join(versionRoot, ".codex-plugin", "plugin.json"),
     path.join(versionRoot, "scripts", "installManifest.mjs"),
+    path.join(versionRoot, "scripts", "browser-client.mjs"),
+    path.join(versionRoot, "scripts", "browser-service.mjs"),
+    path.join(versionRoot, "scripts", "launch-browser-service.mjs"),
+    path.join(versionRoot, ".mcp.json"),
     path.join(versionRoot, "extension-host", process.platform === "darwin" ? "macos" : "linux", process.arch, "extension-host"),
     path.join(resourcesPath, "codex"),
     path.join(resourcesPath, "node"),
@@ -47,7 +51,8 @@ test("manual installer dry-run plan validates an isolated installed plugin and R
     await fs.writeFile(filePath, "fixture");
   }
   const plan = await resolveManualInstallPlan({ codexHome, homeDirectory: root, resourcesPath, versionRoot });
-  assert.equal(plan.ready, true);
+  assert.equal(plan.ready, false);
+  assert.ok(plan.trust.issues.length > 0, "path existence alone is insufficient for initialization");
   assert.deepEqual(plan.missing, []);
   assert.equal(plan.runtimePaths.codexCliPath, path.join(resourcesPath, "codex"));
 });

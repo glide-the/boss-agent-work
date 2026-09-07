@@ -20,10 +20,13 @@ rg -qF "$EXPECTED_HOST" "$WORKSPACE_ROOT/components/chrome-extension/src/types/n
 rg -q 'NATIVE_HOSTS\.dev' "$WORKSPACE_ROOT/components/chrome-extension/src/background/index.ts"
 
 "$PYTHON" "$WORKSPACE_ROOT/scripts/validate_plugin.py" "$WORKSPACE_ROOT/components/codex-plugin"
+test -f "$WORKSPACE_ROOT/components/codex-plugin/.mcp.json"
+test -f "$WORKSPACE_ROOT/components/codex-plugin/scripts/browser-service.mjs"
+test -x "$WORKSPACE_ROOT/components/codex-plugin/scripts/launch-browser-service.mjs"
 node --test "$WORKSPACE_ROOT/components/codex-plugin"/test/*.test.mjs
 node "$WORKSPACE_ROOT/components/codex-plugin/scripts/patch-browser-client-site-status.mjs" \
   --check "$WORKSPACE_ROOT/components/codex-plugin/scripts/browser-client.mjs"
-node --test "$WORKSPACE_ROOT/components/electron-app"/test/*.test.mjs
+bun test "$WORKSPACE_ROOT/components/electron-app/test"
 
 for skill in "$WORKSPACE_ROOT/components/skills"/*; do
   "$PYTHON" "$WORKSPACE_ROOT/scripts/quick_validate_skill.py" "$skill"
@@ -36,18 +39,24 @@ for profile in baseline extension-dev full-reconstructed; do
     node "$marketplace/plugins/chrome-dev/scripts/patch-browser-client-site-status.mjs" \
       --check "$marketplace/plugins/chrome-dev/scripts/browser-client.mjs"
     node "$marketplace/plugins/chrome-dev/scripts/verify-standalone.mjs"
+    test -f "$marketplace/plugins/chrome-dev/.mcp.json"
+    test -f "$marketplace/plugins/chrome-dev/scripts/browser-service.mjs"
+    test -x "$marketplace/plugins/chrome-dev/scripts/launch-browser-service.mjs"
+    test ! -e "$marketplace/plugins/chrome-dev/scripts-bak"
+    test ! -e "$marketplace/plugins/chrome-dev/src"
+    test ! -e "$marketplace/plugins/chrome-dev/test"
     test -f "$marketplace/plugins/chrome-dev/config/site-status.env.example"
     test -f "$marketplace/plugins/chrome-dev/chrome-extension/manifest.json"
     test -x "$marketplace/plugins/chrome-dev/extension-host/macos/arm64/extension-host"
     test -f "$WORKSPACE_ROOT/dist/$profile/electron-app/src/boss-plugin-native-host-lifecycle.mjs"
-    test -x "$WORKSPACE_ROOT/dist/$profile/electron-app/bin/reconcile-native-host.mjs"
+    test -f "$WORKSPACE_ROOT/dist/$profile/electron-app/bin/reconcile-native-host.mjs"
     built_id="$(node "$WORKSPACE_ROOT/scripts/extension-id.mjs" "$marketplace/plugins/chrome-dev/chrome-extension/manifest.json")"
     [[ "$built_id" == "$EXPECTED_ID" ]]
   fi
 done
 
 test -f "$WORKSPACE_ROOT/dist/electron-app/src/boss-plugin-native-host-lifecycle.mjs"
-test -x "$WORKSPACE_ROOT/dist/electron-app/bin/reconcile-native-host.mjs"
+test -f "$WORKSPACE_ROOT/dist/electron-app/bin/reconcile-native-host.mjs"
 node "$WORKSPACE_ROOT/dist/electron-app/bin/reconcile-native-host.mjs" --help >/dev/null
 
 echo "Verification passed: extension ID=$EXPECTED_ID native host=$EXPECTED_HOST"

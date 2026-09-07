@@ -15,7 +15,10 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 
-import { expectedFirstPartyOutputs } from "./inventory.ts";
+import {
+  expectedFirstPartyOutputs,
+  immutableBaselineFirstPartyOutputs,
+} from "./inventory.ts";
 
 const sourceRoot = path.resolve(import.meta.dirname, "..");
 const workspaceRoot = path.resolve(sourceRoot, "../../../..");
@@ -96,6 +99,7 @@ async function runVerification(): Promise<void> {
 
 async function assertExactTopLevel(
   root: string,
+  expectedFiles: readonly string[] = expectedFirstPartyOutputs,
   additionalFiles: readonly string[] = [],
 ): Promise<void> {
   const entries = await readdir(root, { withFileTypes: true });
@@ -106,15 +110,19 @@ async function assertExactTopLevel(
     .sort();
   assert.deepEqual(
     files,
-    [...expectedFirstPartyOutputs, ...additionalFiles].sort(),
+    [...expectedFiles, ...additionalFiles].sort(),
     `unexpected files in ${root}`,
   );
   assert.deepEqual(directories, ["node_modules"], `unexpected directories in ${root}`);
 }
 
-async function prepareDeploymentTree(source: string, destination: string): Promise<void> {
+async function prepareDeploymentTree(
+  source: string,
+  destination: string,
+  outputs: readonly string[] = expectedFirstPartyOutputs,
+): Promise<void> {
   await mkdir(destination, { recursive: true });
-  for (const name of expectedFirstPartyOutputs) {
+  for (const name of outputs) {
     await cp(path.join(source, name), path.join(destination, name));
   }
   await cp(path.join(source, "node_modules"), path.join(destination, "node_modules"), {
@@ -133,20 +141,23 @@ async function prepareDeploymentTree(source: string, destination: string): Promi
       await chmod(path.join(destination, outputName), mode);
     }
   } else {
-    for (const name of expectedFirstPartyOutputs) {
+    for (const name of outputs) {
       const mode = (await stat(path.join(source, name))).mode & 0o777;
       await chmod(path.join(destination, name), mode);
     }
   }
 }
 
-async function swapScriptsTree(source: string): Promise<TreeDigest> {
+async function swapScriptsTree(
+  source: string,
+  outputs: readonly string[] = expectedFirstPartyOutputs,
+): Promise<TreeDigest> {
   const parent = path.dirname(scriptsRoot);
   const identifier = randomUUID();
   const nextRoot = path.join(parent, `scripts.next-${identifier}`);
   const previousRoot = path.join(parent, `scripts.previous-${identifier}`);
-  await prepareDeploymentTree(source, nextRoot);
-  await assertExactTopLevel(nextRoot);
+  await prepareDeploymentTree(source, nextRoot, outputs);
+  await assertExactTopLevel(nextRoot, outputs);
   let previousMoved = false;
   try {
     await rename(scriptsRoot, previousRoot);
@@ -164,7 +175,7 @@ async function swapScriptsTree(source: string): Promise<TreeDigest> {
 async function deploy(): Promise<void> {
   const backup = await verifyImmutableBackup();
   await runVerification();
-  await assertExactTopLevel(candidateRoot, ["build-manifest.json"]);
+  await assertExactTopLevel(candidateRoot, expectedFirstPartyOutputs, ["build-manifest.json"]);
   const candidate = await treeDigest(candidateRoot);
   const deployed = await swapScriptsTree(candidateRoot);
   assert.equal(deployed.fileCount, candidate.fileCount - 1);
@@ -185,7 +196,7 @@ async function deploy(): Promise<void> {
 async function checkDeployed(): Promise<void> {
   await verifyImmutableBackup();
   await runVerification();
-  await assertExactTopLevel(scriptsRoot);
+  await assertExactTopLevel(scriptsRoot, expectedFirstPartyOutputs);
   const temporaryRoot = path.join(
     path.dirname(scriptsRoot),
     `scripts.check-${randomUUID()}`,
@@ -201,7 +212,10 @@ async function checkDeployed(): Promise<void> {
 
 async function rollback(): Promise<void> {
   const backup = await verifyImmutableBackup();
-  const restored = await swapScriptsTree(backupRoot);
+  const restored = await swapScriptsTree(
+    backupRoot,
+    immutableBaselineFirstPartyOutputs,
+  );
   assert.deepEqual(restored, backup);
   await writeFile(
     deploymentReportPath,

@@ -1,10 +1,11 @@
 SHELL := /bin/bash
 
-.PHONY: help setup browser-client extension electron native baseline extension-dev full-reconstructed all verify package clean
+.PHONY: help setup install-skills browser-client extension electron native baseline extension-dev full-reconstructed all verify package clean
 
 help:
 	@echo "Boss投递开发工作区"
-	@echo "  make setup              初始化隔离的 Python 验证环境"
+	@echo "  make setup              初始化 Python 验证环境并安装项目 Skill"
+	@echo "  make install-skills     安装项目 Skill 到 CODEX_HOME/skills"
 	@echo "  make browser-client     用 Bun 构建并部署 TypeScript 恢复脚本"
 	@echo "  make extension          构建 TypeScript/React Chrome 扩展"
 	@echo "  make electron           测试并组装 Electron Main 安装生命周期"
@@ -19,6 +20,9 @@ help:
 
 setup:
 	@./scripts/bootstrap.sh
+
+install-skills:
+	@./scripts/install-project-skills.sh
 
 browser-client:
 	@cd components/codex-plugin/src/browser-client && bun install --frozen-lockfile && bun run build && bun run deploy

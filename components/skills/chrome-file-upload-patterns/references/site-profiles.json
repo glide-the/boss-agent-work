@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "profiles": [
+    {
+      "site_id": "boss-zhipin-chat",
+      "site_name": "BOSS直聘聊天",
+      "domains": [
+        "www.zhipin.com"
+      ],
+      "route_patterns": [
+        "/web/geek/chat"
+      ],
+      "purposes": [
+        "chat-image-attachment"
+      ],
+      "control_type": "hidden-input-wrapped-trigger",
+      "status": "verified",
+      "locators": [
+        {
+          "kind": "css",
+          "value": "[aria-label=\"发送图片\"]",
+          "role": "visible-trigger",
+          "confidence": "verified"
+        },
+        {
+          "kind": "css",
+          "value": "input[type=\"file\"]",
+          "role": "diagnostic-only",
+          "confidence": "observed"
+        }
+      ],
+      "file_input": {
+        "accept_observed": "image/gif,image/jpeg,image/jpg,image/png",
+        "multiple_observed": false
+      },
+      "activation": {
+        "method": "filechooser-event",
+        "steps": [
+          "Start tab.playwright.waitForEvent('filechooser')",
+          "Click the visible wrapper [aria-label=\"发送图片\"]",
+          "Await the chooser",
+          "Call chooser.setFiles with the absolute local path"
+        ],
+        "selection_behavior": "auto-send"
+      },
+      "verification": [
+        {
+          "stage": "submitted",
+          "signal": "conversation-list-preview",
+          "expected": "[图片]"
+        },
+        {
+          "stage": "delivered",
+          "signal": "conversation-message-status",
+          "expected": "送达"
+        }
+      ],
+      "known_failures": [
+        "Calling setInputFiles on the controller locator is unsupported.",
+        "Clicking the accessibility snapshot's inner Choose File button can time out because it is hidden.",
+        "Clicking generic text 发送图片 can time out because the actionable element is the aria-label wrapper.",
+        "Clicking the hidden input with force may not produce a filechooser event."
+      ],
+      "permissions": [
+        "The Chrome extension may require Allow access to file URLs for local uploads."
+      ],
+      "last_verified": "2026-08-19",
+      "evidence": "Live image upload completed in an authenticated BOSS chat; image preview and delivery status were observed."
+    }
+  ]
+}

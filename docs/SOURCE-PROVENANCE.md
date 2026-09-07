@@ -9,6 +9,8 @@
 | `baselines/chrome-extension/` | 当前 Boss投递插件 `chrome-extension/` | 版本 `1.1.5.2` 的已编译基线 |
 | `baselines/native-host/` | 当前 Boss投递插件 `extension-host/macos/arm64/extension-host` | OpenAI Developer ID 签名的 arm64 Mach-O 基线 |
 
+`components/skills/chrome-file-upload-patterns/` 是 Chrome 文件上传经验库的项目权威副本；`make setup` 或 `make install-skills` 将它同步到 `$CODEX_HOME/skills/chrome-file-upload-patterns/`，未设置 `CODEX_HOME` 时使用 `~/.codex/skills/chrome-file-upload-patterns/`。该 Skill 不属于 marketplace 内的 `components/codex-plugin/skills/`。
+
 ## 不能混淆的边界
 
 1. Rust 语义重建 Host 不能替代或冒充 OpenAI 签名 Host。

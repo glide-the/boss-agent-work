@@ -1,8 +1,37 @@
-import { sendCdpCommand, attachDebugger, detachDebugger } from './cdp-client';
+import {
+  sendCdpCommand,
+  attachDebugger,
+  detachDebugger,
+  cancelAllCdpOperations,
+  cancelCdpOperation,
+  cancelCdpOperationsForTab,
+  cdpOperationDiagnostics,
+  handleCdpLifecycleEvent,
+} from './cdp-client';
 
 export class ChromeBrowserControlHandler {
   async executeCdp(params: any): Promise<unknown> {
     return sendCdpCommand(params);
+  }
+
+  async cancelBrowserOperation(params: { operationId: string; reason?: 'timeout' | 'cancelled' | 'dialog' | 'tab_closed' | 'browser_disconnected' }): Promise<{ browserCleanupComplete: boolean }> {
+    return cancelCdpOperation(params.operationId, params.reason);
+  }
+
+  getBrowserOperationDiagnostics(): { activeOperations: number; activeDialogs: number } {
+    return cdpOperationDiagnostics();
+  }
+
+  handleCdpEvent(source: { tabId?: number }, method: string, params: unknown): void {
+    handleCdpLifecycleEvent(source, method, params);
+  }
+
+  async handleTabClosed(tabId: number): Promise<void> {
+    await cancelCdpOperationsForTab(tabId);
+  }
+
+  async handleBrowserDisconnected(): Promise<void> {
+    await cancelAllCdpOperations();
   }
 
   async attach(params: { tabId: number }): Promise<{ ok: true }> {

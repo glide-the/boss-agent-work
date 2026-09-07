@@ -2,6 +2,8 @@
 
 本文用于把 Boss投递从源码工程安装到本机 Codex/ChatGPT 和 Google Chrome。推荐使用 `baseline`：Chrome 扩展使用已验证基线，Native Host 使用现有签名的 arm64 二进制。
 
+当前版本、制品摘要、源码映射和发布验收清单见 [Codex 插件发布与使用说明](codex-plugin-release.md)。
+
 > 本流程会修改 Codex marketplace 配置、`~/.codex/plugins/cache`、Chrome NativeMessagingHosts 和 `chrome-native-hosts-v2.json`。Boss投递使用独立 Host `com.openai.codexextension.dev`，不会替换官方 `com.openai.codexextension`。
 
 ## 零、准备配套仓库并运行 Prompt 任务
@@ -260,7 +262,16 @@ make baseline
 make verify
 ```
 
-`make baseline` 会先调用 `make browser-client`。规范要求它只从 `components/codex-plugin/src/browser-client` 使用锁定的 Bun 构建全部第一方脚本和配置；差分失败时不会继续组装 marketplace。2026-08-18 复审发现旧实现仍从 `tools/browser-client-recovery` 嵌入基线 bundle，迁移完成前不得把旧构建称为完整源码恢复。
+`make setup` 除了初始化 `.venv`，还会把项目维护的 `components/skills/chrome-file-upload-patterns` 同步到 `$CODEX_HOME/skills/chrome-file-upload-patterns`；未设置 `CODEX_HOME` 时使用 `~/.codex/skills/chrome-file-upload-patterns`。只需要重新安装 Skill 时可运行：
+
+```bash
+cd /Users/dmeck/project/boss-agent-work/develop
+make install-skills
+```
+
+项目目录是该 Skill 的可维护源码，`~/.codex/skills` 是初始化生成的安装副本；不要只修改安装副本，否则下次初始化会被项目版本覆盖。
+
+`make baseline` 会先调用 `make browser-client`。规范要求它只从 `components/codex-plugin/src/browser-client` 使用锁定的 Bun 构建全部第一方脚本和配置；差分失败时不会继续组装 marketplace。Browser Client 的权威源码、生成物和仍保留的兼容 kernel 边界见 [Codex 插件发布与使用说明](codex-plugin-release.md#2-制品与源码映射)，不得把过渡生成物描述为上游官方源码的完整恢复。
 
 主要输出：
 
@@ -278,10 +289,6 @@ CODEX_CLI_BIN="$CODEX_DATA_DIR/plugins/.plugin-appserver/codex"
 
 test -x "$CODEX_CLI_BIN"
 
-if "$CODEX_CLI_BIN" plugin marketplace list | rg -q '^codex-chrome-automation-local[[:space:]]'; then
-  "$CODEX_CLI_BIN" plugin marketplace remove codex-chrome-automation-local --json
-fi
-
 "$CODEX_CLI_BIN" plugin marketplace add "$BOSS_WORKSPACE/dist/baseline/marketplace" --json
 "$CODEX_CLI_BIN" plugin add chrome-dev@codex-chrome-automation-local --json
 ```
@@ -290,27 +297,27 @@ fi
 
 ```text
 pluginId: chrome-dev@codex-chrome-automation-local
-version: 26.707.30751-standalone.4
+version: 26.707.30751-standalone.7
 ```
 
-Codex CLI 当前只负责复制插件。若正在运行的 Electron 宿主尚未接入本项目的 `onDidInstall` lifecycle，还需要执行下一步。
+Codex CLI 负责安装插件并更新启用记录，不负责本项目的 Native Host 注册。若正在运行的 Electron 宿主尚未接入本项目的 `onDidInstall` lifecycle，还需要执行下一步。
 
 ### 3. 初始化 Native Host
 
-先只检查路径，不写用户配置：
+先检查路径、用户配置、个人预期指纹与宿主接口，不写用户配置。必须使用 Bun。新版个人 Browser Client 通过插件自带 `boss_repl` 调用独立的 `boss_browser` trusted service；dry-run 会执行真实授权 ping，旧共享 SHA allowlist 不参与初始化：
 
 ```bash
 BOSS_WORKSPACE="/Users/dmeck/project/boss-agent-work/develop"
 
-node "$BOSS_WORKSPACE/dist/baseline/electron-app/bin/reconcile-native-host.mjs" \
+bun "$BOSS_WORKSPACE/components/electron-app/bin/reconcile-native-host.mjs" \
   --dry-run \
   --json
 ```
 
-确认输出中 `ready` 为 `true` 后执行：
+只有输出 `ready=true` 才可以执行注册；这仍不表示当前会话已经获得信任或连接成功：
 
 ```bash
-node "$BOSS_WORKSPACE/dist/baseline/electron-app/bin/reconcile-native-host.mjs" --json
+bun "$BOSS_WORKSPACE/components/electron-app/bin/reconcile-native-host.mjs" --json
 ```
 
 此命令会幂等完成：
@@ -392,7 +399,7 @@ cargo --version
 ```bash
 BOSS_WORKSPACE="/Users/dmeck/project/boss-agent-work/develop"
 
-node "$BOSS_WORKSPACE/dist/baseline/electron-app/bin/reconcile-native-host.mjs" \
+bun "$BOSS_WORKSPACE/components/electron-app/bin/reconcile-native-host.mjs" \
   --codex-home "/Users/dmeck/.codex" \
   --resources-path "/Applications/ChatGPT.app/Contents/Resources" \
   --codex-cli "/Users/dmeck/.codex/plugins/.plugin-appserver/codex" \
@@ -406,7 +413,7 @@ node "$BOSS_WORKSPACE/dist/baseline/electron-app/bin/reconcile-native-host.mjs" 
 ```bash
 BOSS_WORKSPACE="/Users/dmeck/project/boss-agent-work/develop"
 
-node "$BOSS_WORKSPACE/dist/baseline/electron-app/bin/reconcile-native-host.mjs" \
+bun "$BOSS_WORKSPACE/components/electron-app/bin/reconcile-native-host.mjs" \
   --codex-home "/Users/dmeck/.codex" \
   --resources-path "/Applications/Codex.app/Contents/Resources" \
   --codex-cli "/Applications/Codex.app/Contents/Resources/codex" \
@@ -418,7 +425,7 @@ node "$BOSS_WORKSPACE/dist/baseline/electron-app/bin/reconcile-native-host.mjs" 
 如插件 cache 中存在多个版本，可使用：
 
 ```bash
---version-root "/Users/dmeck/.codex/plugins/cache/codex-chrome-automation-local/chrome-dev/26.707.30751-standalone.4"
+--version-root "/Users/dmeck/.codex/plugins/cache/codex-chrome-automation-local/chrome-dev/26.707.30751-standalone.7"
 ```
 
 ## 六、分层验证
@@ -448,9 +455,10 @@ jq '[.entries[] | select(.nativeHostNames[]? == "com.openai.codexextension.dev")
 | `manifest-valid` | `check-native-host-manifest.js` 显示 `correct: true` |
 | `runtime-published` | registry 中存在 Boss投递 dev entry，路径全部有效 |
 | `port-connected` | Chrome 实际启动 Boss投递 `extension-host`，或 Popup 显示 Connected |
-| `browser-action-verified` | 新 node_repl 会话通过 Boss投递完成一次轻量页面读取 |
+| `service-authorized` | `effectiveTrust=isolated-service-authorized`，动态 ping 已确认 `boss_browser` 与受信 worker 的 `nativePipe` |
+| `browser-action-verified` | Desktop 重新加载插件后的 `boss_repl` 新会话通过 Boss投递完成一次轻量页面读取 |
 
-`manifest-valid` 不等于浏览器操作已经可用。最终验证应在新 node_repl 会话中加载 Boss投递 browser client，执行一次简单的标签页读取；如果返回 `Browser is not available: extension`，不要改用本地 Playwright 或 Selenium 伪装成功。
+`manifest-valid` 和 `service-authorized` 都不等于 Chrome 端已经连接。最终验证应在 Desktop 重新加载插件后的 `boss_repl` 会话中加载 Boss投递 Browser Client，执行一次简单的标签页读取；如果返回 `Browser is not available: extension`，按 Native Host/扩展链路排查，不把其他浏览器机制的结果当成成功。
 
 ## 七、更新插件
 
@@ -465,7 +473,7 @@ CODEX_DATA_DIR="${CODEX_HOME:-/Users/dmeck/.codex}"
 CODEX_CLI_BIN="$CODEX_DATA_DIR/plugins/.plugin-appserver/codex"
 
 "$CODEX_CLI_BIN" plugin add chrome-dev@codex-chrome-automation-local --json
-node "$BOSS_WORKSPACE/dist/baseline/electron-app/bin/reconcile-native-host.mjs" --json
+bun "$BOSS_WORKSPACE/components/electron-app/bin/reconcile-native-host.mjs" --json
 ```
 
 如果扩展构建物发生变化，再到 `chrome://extensions` 点击“重新加载”。Native Host 或 registry 单独变化时通常不需要重新加载扩展，连接会按重试机制重新建立。
@@ -517,3 +525,27 @@ nativeHostNames 包含 com.openai.codexextension.dev
 ### 安装后每条命令固定等待约 30 秒
 
 这属于 browser-client/扩展控制链路问题，不是 manifest 安装问题。使用 `chrome-plugin-debug` 或 `chrome-plugin-fix-delivery` 继续诊断，部署扩展修复后必须 reload Chrome 扩展。
+
+## 个人指纹配置与信任边界（2026-09-07）
+
+`NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S` 是旧版宿主的共享 Browser Client allowlist，不是个人插件身份，也不是操作系统变量。本项目不追加或覆盖该变量。个人插件通过 `.mcp.json` 启动独立 `boss_repl`，并只在该子进程注册 `boss_browser`；启动器会删除继承的旧 SHA 变量，不修改官方 `browser` 服务。
+
+个人插件只读取专用变量 `BOSS_PLUGIN_EXPECTED_BROWSER_CLIENT_SHA256`，作为受审查 Browser Client 文件的预期 SHA-256；默认未设置。优先级为 `--expected-browser-client-sha256` 参数、该环境变量、未指定。它仅用于完整性比较，不能授予宿主信任，也不会被传递为宿主 SHA256S 信任列表。请将经过审查的发行产物哈希保存在自己的终端或运行命令环境中，不要放进宿主的全局 shell_environment_policy。
+
+```bash
+BOSS_PLUGIN_EXPECTED_BROWSER_CLIENT_SHA256="<受审查产物的64位SHA-256>" \
+  bun components/electron-app/bin/reconcile-native-host.mjs --dry-run --json
+bun components/electron-app/bin/reconcile-native-host.mjs --codex-home /absolute/personal-codex --dry-run --json
+```
+
+命令逐项报告 `PLUGIN_NOT_INSTALLED`、`PLUGIN_DISABLED`、`PLUGIN_UNTRUSTED`、`FINGERPRINT_MISMATCH`、`USER_CONFIG_ERROR`、`INVALID_ENVIRONMENT`、`CONFIG_CONFLICT`、`POLICY_REVIEW_REQUIRED`、`RUNTIME_INCOMPATIBLE` 或 `RUNTIME_UNVERIFIED`。只有动态 ping 同时验证服务名、随机 nonce、协议版本和 `nativePipe=true` 时，`effectiveTrust` 才为 `isolated-service-authorized`。托管配置存在时交由宿主确认。
+
+通过前置检查后，注册会先备份 Native Host 目标至所选 CODEX_HOME/backups/personal-plugin-native-host-*/snapshot.json，再调用原注册器。返回 `nativeHostRegistered` 和 `connectionVerified=false`，不再用笼统的 correct 表示整体就绪。同一次初始化成功后的回滚命令：
+
+```bash
+bun components/electron-app/bin/rollback-native-host.mjs /absolute/path/to/snapshot.json
+```
+
+回滚前检查文件是否在初始化后被其他进程修改，冲突时拒绝覆盖。注册失败保留原始快照供人工恢复，不自动回滚并发写入。config.toml 始终只读，因此不存在需要恢复的信任配置修改。直接 Electron 生命周期 API 仍仅注册 Native Host；它不是信任安装器，也不代表 Browser Client 连接已验收。
+
+设计、证据与完整限制见 [personal-plugin-trust-design.md](personal-plugin-trust-design.md)。动态服务授权已验证；安装后需重新加载 Desktop 插件再完成真实 Chrome 只读验收。

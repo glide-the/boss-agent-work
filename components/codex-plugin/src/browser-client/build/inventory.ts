@@ -23,7 +23,20 @@ export const browserRuntimeEntry: BuildEntry = {
   classification: "browser-runtime",
 };
 
+export const browserServiceEntry: BuildEntry = {
+  source: "browser-service.ts",
+  output: "browser-service.mjs",
+  mode: 0o644,
+  classification: "browser-runtime",
+};
+
 export const utilityEntries: BuildEntry[] = [
+  {
+    source: "scripts/launch-browser-service.ts",
+    output: "launch-browser-service.mjs",
+    mode: 0o755,
+    classification: "first-party-cli",
+  },
   {
     source: "scripts/check-extension-installed.ts",
     output: "check-extension-installed.js",
@@ -95,7 +108,11 @@ export const configEntries: ConfigEntry[] = [
   },
 ];
 
-export const allBuildEntries: BuildEntry[] = [browserRuntimeEntry, ...utilityEntries];
+export const allBuildEntries: BuildEntry[] = [
+  browserRuntimeEntry,
+  browserServiceEntry,
+  ...utilityEntries,
+];
 
 export const runtimeAdapterEntries: BuildEntry[] = [
   {
@@ -122,3 +139,9 @@ export const expectedFirstPartyOutputs = [
   ...allBuildEntries.map((entry) => entry.output),
   ...configEntries.map((entry) => entry.output),
 ].sort();
+
+/** Files present in the immutable pre-service scripts-bak snapshot. */
+export const immutableBaselineFirstPartyOutputs = expectedFirstPartyOutputs.filter(
+  (output) =>
+    output !== browserServiceEntry.output && output !== "launch-browser-service.mjs",
+);

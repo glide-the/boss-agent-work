@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 2,
+  "observedAt": "2026-09-07",
+  "branch": "codex/chrome-dialog-cancellation",
+  "identity": {
+    "marketplace": "codex-chrome-automation-local",
+    "plugin": "chrome-dev",
+    "selector": "chrome-dev@codex-chrome-automation-local",
+    "versionBefore": "26.707.30751-standalone.4",
+    "versionInstalled": "26.707.30751-standalone.7",
+    "scope": "user",
+    "extensionId": "jigmpnbdhhempldjgegphdgkochgpagi",
+    "nativeHostName": "com.openai.codexextension.dev",
+    "mcpServer": "boss_repl",
+    "rpcService": "boss_browser"
+  },
+  "fingerprints": {
+    "legacyVersionBrowserClientSha256": "9599a8a2520d1e064e3965e4cbf82240f3179cf935ab355dca3f96429c52e6e6",
+    "installedBrowserClientSha256": "d3a46310e170cd04943dc1a2c91b46adfdb1d099d473066235ba04123df0626f",
+    "installedBrowserServiceSha256": "051a35acf9253f847d1814fcb1c393fbd8c1e26468d83b94fe532395d6efd805",
+    "installedLauncherSha256": "0c6a9d6ed3072a489e068b7279a4427bcc87a19a54d7474ae380bbc286fd56ca",
+    "immutableScriptsBackup": {
+      "fileCount": 344,
+      "sha256": "85d1bc4f7d456ef75eceab7df6159ebfdfce23de0af51175ec9ba2dc9e579964"
+    }
+  },
+  "legacyTrust": {
+    "variable": "NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S",
+    "configLocation": "shell_environment_policy.set",
+    "configuredValueCount": 2,
+    "containsLegacyVersionBrowserClientSha256": false,
+    "containsInstalledBrowserClientSha256": false,
+    "launcherRemovesInheritedValue": true,
+    "usedForPersonalAuthorization": false,
+    "unknownWriter": true
+  },
+  "historicalInitializationCode": {
+    "hashConstant": "/Users/dmeck/project/CodexChromePlug/codex-1.1.5_0/Codex-Electron-Reconstructed-Source-Only-Out/work/strict/reconstructed-project/src/runtime/.vite/build/main-BJ6Uf5yA.ts:482",
+    "hashArguments": [
+      "/Users/dmeck/project/CodexChromePlug/codex-1.1.5_0/Codex-Electron-Reconstructed-Source-Only-Out/work/strict/reconstructed-project/src/runtime/.vite/build/main-BJ6Uf5yA.ts:1555",
+      "/Users/dmeck/project/CodexChromePlug/codex-1.1.5_0/Codex-Electron-Reconstructed-Source-Only-Out/work/strict/reconstructed-project/src/runtime/.vite/build/main-BJ6Uf5yA.ts:1592"
+    ],
+    "environmentAssignment": "/Users/dmeck/project/CodexChromePlug/codex-1.1.5_0/Codex-Electron-Reconstructed-Source-Only-Out/src/main/browser/browser-native-repl-config.ts:65-66",
+    "checkerSourceAvailable": false
+  },
+  "runtime": {
+    "nodeReplPath": "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl",
+    "hasLegacyHashMarker": false,
+    "hasTrustedServicesMarker": true,
+    "legacyCorrectHashExperiment": {
+      "nativePipeAvailable": false,
+      "rpcAvailable": true,
+      "browserClientSetupSucceeded": false
+    },
+    "personalServiceProbe": {
+      "authorized": true,
+      "nativePipeAvailable": true,
+      "protocolVersion": 1,
+      "service": "boss_browser"
+    },
+    "restrictedGuiPathProbe": {
+      "path": "/usr/bin:/bin",
+      "launcherRuntime": "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node",
+      "authorized": true,
+      "nativePipeAvailable": true
+    }
+  },
+  "actualInstall": {
+    "installed": true,
+    "enabled": true,
+    "versionRoot": "/Users/dmeck/.codex/plugins/cache/codex-chrome-automation-local/chrome-dev/26.707.30751-standalone.7",
+    "latestPointsToVersion": true,
+    "marketplaceAlreadyAdded": true,
+    "preflightReady": true,
+    "effectiveTrust": "isolated-service-authorized",
+    "firstInitializationAction": "replace-symlink",
+    "secondInitializationAction": "no-op",
+    "nativeHostRegistered": true,
+    "connectionVerified": false,
+    "applicationSupportRegistryEntryCount": 25,
+    "unrelatedApplicationSupportEntriesPreserved": 24
+  },
+  "backups": {
+    "configBefore": "/Users/dmeck/.codex/backups/personal-plugin-install-20260907-standalone-5/config.toml.before",
+    "firstNativeHostSnapshot": "/Users/dmeck/.codex/backups/personal-plugin-native-host-b3ebc709-11f7-4045-b672-cdfab011351a/snapshot.json",
+    "secondNativeHostSnapshot": "/Users/dmeck/.codex/backups/personal-plugin-native-host-b46a68bd-4ddc-42b0-8388-082ee1a94ded/snapshot.json"
+  },
+  "configChanges": {
+    "pluginInstallerRemovedMarketplaceLastUpdated": true,
+    "desktopAddedUnrelatedProjectTrustConcurrently": true,
+    "legacyTrustVariableChanged": false,
+    "otherRecordsPreserved": true
+  },
+  "tests": {
+    "browserClientUnitTests": { "passed": 33, "failed": 0 },
+    "electronTests": { "passed": 16, "failed": 0 },
+    "nativeHostTests": { "passed": 10, "failed": 0 },
+    "canonicalArtifactCount": 15,
+    "runtimeRoundtrip": "pass-via-isolated-boss-browser-service",
+    "temporaryCodexHomeInitialization": "pass",
+    "actualUserInitialization": "pass-and-idempotent",
+    "marketplaceProfiles": ["baseline", "extension-dev", "full-reconstructed"],
+    "package": "pass",
+    "desktopReload": "unverified",
+    "liveChromeTabs": "unverified"
+  },
+  "packages": {
+    "boss-delivery-baseline.tar.gz": "e0623064ac8eaf32a9e7bb4a74b03a86d8eeb5d0e262ba04f3f784c061f56611",
+    "boss-delivery-extension-dev.tar.gz": "f1c860e11bb845a7389509cc06a4dd1e8bb9382f6e3a28451e0f0c9834bebfc1",
+    "boss-delivery-full-reconstructed.tar.gz": "7c697e60a0b8fe47624b4066c4efcae6f70c8f1467094e48dc5790e39f8d41f8"
+  }
+}

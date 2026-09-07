@@ -597,7 +597,7 @@
       "domSnapshot": {
         "declarations": [
           {
-            "text": "domSnapshot(): Promise<string>; // Return a snapshot of the current DOM as a string, including expanded iframe body content when available.",
+            "text": "domSnapshot(options?: { timeoutMs?: number; signal?: AbortSignal }): Promise<string>; // Return a bounded snapshot of the current DOM, including expanded iframe body content when available. Native JavaScript dialogs fail with a structured cancellation error.",
             "references": []
           }
         ]

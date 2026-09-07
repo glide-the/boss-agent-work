@@ -9,6 +9,8 @@ When using Playwright, keep and reuse a recent `tab.playwright.domSnapshot()` wh
 
 ## Snapshot Discipline
 - Keep and reuse the latest relevant `domSnapshot()` until it proves stale or you need locator ground truth for UI that was not present in it.
+- `domSnapshot({ timeoutMs, signal })` is bounded and single-flight per tab. A native `alert()`, `confirm()`, or `prompt()` causes a structured `BROWSER_OPERATION_CANCELLED` failure; dismiss the dialog before requesting another snapshot.
+- A timed-out or cancelled snapshot is already cancelled at the Chrome side. Do not reconnect or issue repeated snapshots to recover it; resolve the blocking dialog or tab state first.
 - Take a fresh `domSnapshot()` after navigation when you need to orient yourself or construct locators on the new page.
 - If a click times out, strict mode fails, or a selector parse error occurs, take a fresh `domSnapshot()` before forming the next locator.
 - Construct locators only from what appears in the latest snapshot. Do not guess labels, accessible names, or selectors.

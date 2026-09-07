@@ -8,8 +8,8 @@
   },
   "output": {
     "path": "components/codex-plugin/src/browser-client/browser-runtime.generated.js",
-    "sha256": "d49ed20fa39d0c73641588dbb18d332fd44fc5359270cfc1b27d711592218cba",
-    "bytes": 1259447,
+    "sha256": "1ea4c78f2300e6067329a8d1dedf1ef37997edf071a3768af5a550684a1c92bc",
+    "bytes": 1264559,
     "formatter": {
       "name": "prettier",
       "version": "3.6.2",
@@ -73,6 +73,138 @@
       ],
       "classification": "reconstructed",
       "target": "components/codex-plugin/src/browser-client/runtime/node-repl-display.ts",
+      "confidence": "confirmed"
+    },
+    "browserOperationCancellation": {
+      "inputRanges": [
+        {
+          "start": 304776,
+          "end": 304834
+        },
+        {
+          "start": 330218,
+          "end": 330238
+        },
+        {
+          "start": 355387,
+          "end": 355422
+        },
+        {
+          "start": 359009,
+          "end": 359025
+        },
+        {
+          "start": 592632,
+          "end": 592666
+        },
+        {
+          "start": 591450,
+          "end": 591475
+        },
+        {
+          "start": 593402,
+          "end": 593421
+        },
+        {
+          "start": 616825,
+          "end": 616855
+        },
+        {
+          "start": 617478,
+          "end": 617502
+        },
+        {
+          "start": 617636,
+          "end": 617677
+        },
+        {
+          "start": 617924,
+          "end": 617954
+        },
+        {
+          "start": 618524,
+          "end": 618544
+        },
+        {
+          "start": 814803,
+          "end": 814820
+        },
+        {
+          "start": 317072,
+          "end": 317093
+        },
+        {
+          "start": 964450,
+          "end": 964494
+        },
+        {
+          "start": 966709,
+          "end": 966732
+        },
+        {
+          "start": 966908,
+          "end": 966939
+        },
+        {
+          "start": 987377,
+          "end": 987431
+        },
+        {
+          "start": 987831,
+          "end": 987859
+        },
+        {
+          "start": 988798,
+          "end": 988833
+        }
+      ],
+      "classification": "reconstructed",
+      "target": "components/codex-plugin/src/browser-client/runtime/browser-operation.ts",
+      "supportingTarget": "components/codex-plugin/src/browser-client/runtime/json-rpc-endpoint.ts",
+      "confidence": "confirmed"
+    },
+    "trustedServiceRpcAdapter": {
+      "inputRanges": [
+        {
+          "start": 987087,
+          "end": 987143
+        },
+        {
+          "start": 987237,
+          "end": 987263
+        },
+        {
+          "start": 987432,
+          "end": 987449
+        },
+        {
+          "start": 987515,
+          "end": 987551
+        },
+        {
+          "start": 987793,
+          "end": 987811
+        },
+        {
+          "start": 987831,
+          "end": 987859
+        },
+        {
+          "start": 988961,
+          "end": 988989
+        },
+        {
+          "start": 989002,
+          "end": 989025
+        },
+        {
+          "start": 989573,
+          "end": 989607
+        }
+      ],
+      "classification": "reconstructed",
+      "target": "components/codex-plugin/src/browser-client/runtime/trusted-service.ts",
+      "serviceEntry": "components/codex-plugin/src/browser-client/browser-service.ts",
       "confidence": "confirmed"
     }
   },

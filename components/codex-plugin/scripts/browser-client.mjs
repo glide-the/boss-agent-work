@@ -328,6 +328,315 @@ function createNodeReplDisplayBridge(globals) {
   };
 }
 
+// runtime/browser-operation.ts
+var DEFAULT_DOM_SNAPSHOT_TIMEOUT_MS = 3000;
+var MAX_DOM_SNAPSHOT_TIMEOUT_MS = 60000;
+
+class BrowserOperationError extends Error {
+  code = "BROWSER_OPERATION_CANCELLED";
+  details;
+  constructor(details, message) {
+    super(message ?? `${details.operation} ${details.reason} for tab ${details.tabId}`);
+    this.name = "BrowserOperationError";
+    this.details = details;
+  }
+}
+function isOperationAbortReason(value) {
+  return typeof value === "object" && value !== null && "reason" in value;
+}
+function throwIfBrowserOperationAborted(signal, operation, tabId, requestId) {
+  if (!signal?.aborted)
+    return;
+  const abortReason = isOperationAbortReason(signal.reason) ? signal.reason : { reason: "cancelled", dialogDetected: false };
+  throw new BrowserOperationError({
+    operation,
+    tabId,
+    reason: abortReason.reason,
+    dialogDetected: abortReason.dialogDetected,
+    browserCleanupComplete: false,
+    ...requestId === undefined ? {} : { requestId }
+  });
+}
+function normalizedTimeout(timeoutMs) {
+  if (timeoutMs === undefined)
+    return DEFAULT_DOM_SNAPSHOT_TIMEOUT_MS;
+  if (!Number.isInteger(timeoutMs) || timeoutMs <= 0 || timeoutMs > MAX_DOM_SNAPSHOT_TIMEOUT_MS) {
+    throw new RangeError(`domSnapshot timeoutMs must be an integer between 1 and ${MAX_DOM_SNAPSHOT_TIMEOUT_MS}`);
+  }
+  return timeoutMs;
+}
+function normalizeError(error, operation, tabId, signal) {
+  if (error instanceof BrowserOperationError)
+    return error;
+  if (typeof error === "object" && error !== null && "data" in error) {
+    const data = error.data;
+    if (typeof data === "object" && data !== null && "reason" in data) {
+      const record = data;
+      return new BrowserOperationError({
+        operation: record.operation ?? operation,
+        tabId: record.tabId ?? tabId,
+        reason: record.reason ?? "cancelled",
+        dialogDetected: record.dialogDetected === true,
+        browserCleanupComplete: record.browserCleanupComplete === true,
+        ...record.requestId === undefined ? {} : { requestId: record.requestId }
+      }, error instanceof Error ? error.message : String(error));
+    }
+  }
+  if (signal.aborted) {
+    const abortReason = isOperationAbortReason(signal.reason) ? signal.reason : { reason: "cancelled", dialogDetected: false };
+    return new BrowserOperationError({
+      operation,
+      tabId,
+      reason: abortReason.reason,
+      dialogDetected: abortReason.dialogDetected,
+      browserCleanupComplete: false
+    });
+  }
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+class BrowserOperationCoordinator {
+  active = new Map;
+  sequence = 0;
+  run(options) {
+    const existing = this.active.get(options.key);
+    if (existing)
+      return existing.promise;
+    const timeoutMs = normalizedTimeout(options.timeoutMs);
+    const controller = new AbortController;
+    const operationId = `${options.operation}:${options.tabId}:${Date.now()}:${++this.sequence}`;
+    const abortFromCaller = () => controller.abort({ reason: "cancelled", dialogDetected: false });
+    if (options.signal?.aborted)
+      abortFromCaller();
+    else
+      options.signal?.addEventListener("abort", abortFromCaller, { once: true });
+    const timeout = setTimeout(() => controller.abort({ reason: "timeout", dialogDetected: false }), timeoutMs);
+    const promise = Promise.resolve().then(() => {
+      if (controller.signal.aborted) {
+        throw normalizeError(controller.signal.reason, options.operation, options.tabId, controller.signal);
+      }
+      return options.execute({ operationId, signal: controller.signal, timeoutMs });
+    }).catch((error) => {
+      throw normalizeError(error, options.operation, options.tabId, controller.signal);
+    }).finally(() => {
+      clearTimeout(timeout);
+      options.signal?.removeEventListener("abort", abortFromCaller);
+      if (this.active.get(options.key)?.promise === promise)
+        this.active.delete(options.key);
+    });
+    this.active.set(options.key, { controller, promise });
+    return promise;
+  }
+  cancelAll(reason = "cancelled") {
+    for (const operation of this.active.values()) {
+      operation.controller.abort({ reason, dialogDetected: reason === "dialog" });
+    }
+  }
+  get pendingCount() {
+    return this.active.size;
+  }
+}
+var domSnapshotOperations = new BrowserOperationCoordinator;
+
+// runtime/json-rpc-endpoint.ts
+class RemoteJsonRpcError extends Error {
+  code;
+  data;
+  constructor(error) {
+    super(error.message ?? "JSON-RPC request failed");
+    this.name = "RemoteJsonRpcError";
+    this.code = error.code;
+    this.data = error.data;
+  }
+}
+
+class CancellableJsonRpcEndpoint {
+  transport;
+  nextId = 1;
+  pendingRequests = new Map;
+  requestHandlers = new Map;
+  eventHandlers = new Map;
+  lateResponseTombstones = new Set;
+  constructor(transport) {
+    this.transport = transport;
+    transport.setMessageCallback((message) => void this.handleIncomingMessage(message));
+    transport.addCloseListener?.((error) => {
+      this.rejectPendingRequests(error ?? new Error("transport closed before response"));
+    });
+  }
+  registerRequestHandlerObject(handlerObject) {
+    const names = new Set([
+      ...Object.getOwnPropertyNames(handlerObject),
+      ...Object.getOwnPropertyNames(Object.getPrototypeOf(handlerObject))
+    ]);
+    for (const name of names) {
+      if (name === "constructor")
+        continue;
+      const value = handlerObject[name];
+      if (typeof value === "function")
+        this.registerRequestHandler(name, value.bind(handlerObject));
+    }
+  }
+  registerRequestHandler(method, handler) {
+    this.requestHandlers.set(method, handler);
+  }
+  addEventListener(method, handler) {
+    const handlers = this.eventHandlers.get(method) ?? [];
+    handlers.push(handler);
+    this.eventHandlers.set(method, handlers);
+  }
+  removeEventListener(method, handler) {
+    this.eventHandlers.set(method, (this.eventHandlers.get(method) ?? []).filter((item) => item !== handler));
+  }
+  sendNotification(method, params) {
+    this.transport.sendMessage({ jsonrpc: "2.0", method, params });
+  }
+  sendRequest(method, params, options = {}) {
+    const id = this.nextId++;
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      let timer;
+      let abortFromSignal = () => {};
+      const cleanup = () => {
+        if (timer !== undefined)
+          clearTimeout(timer);
+        options.signal?.removeEventListener("abort", abortFromSignal);
+      };
+      const finish = (callback) => {
+        if (settled)
+          return;
+        settled = true;
+        this.pendingRequests.delete(id);
+        cleanup();
+        callback();
+      };
+      const abort = (abortReason, dialogDetectedOverride) => {
+        if (settled)
+          return;
+        this.rememberTombstone(id);
+        const signalReason = options.signal?.reason;
+        const reason = abortReason ?? signalReason?.reason ?? "cancelled";
+        const dialogDetected = dialogDetectedOverride ?? signalReason?.dialogDetected === true;
+        const cancel = options.cancelRequest == null ? Promise.resolve({ browserCleanupComplete: false }) : this.sendRequest(options.cancelRequest.method, { ...options.cancelRequest.params, reason }, { timeoutMs: 1000 }).then((result) => ({ browserCleanupComplete: result.browserCleanupComplete === true })).catch(() => ({ browserCleanupComplete: false }));
+        finish(() => {
+          cancel.then(({ browserCleanupComplete }) => reject(new BrowserOperationError({
+            operation: options.operation ?? method,
+            tabId: options.tabId ?? 0,
+            reason,
+            dialogDetected,
+            browserCleanupComplete,
+            requestId: options.operationId ?? String(id)
+          })));
+        });
+      };
+      this.pendingRequests.set(id, {
+        resolve: (value) => finish(() => resolve(value)),
+        reject: (error) => finish(() => reject(error)),
+        cleanup,
+        disconnectedError: (error) => options.operationId == null ? error : new BrowserOperationError({
+          operation: options.operation ?? method,
+          tabId: options.tabId ?? 0,
+          reason: "browser_disconnected",
+          dialogDetected: false,
+          browserCleanupComplete: false,
+          requestId: options.operationId
+        }, error instanceof Error ? error.message : String(error))
+      });
+      if (options.signal?.aborted) {
+        abort();
+        return;
+      }
+      abortFromSignal = () => abort();
+      options.signal?.addEventListener("abort", abortFromSignal, { once: true });
+      if (options.timeoutMs !== undefined)
+        timer = setTimeout(() => abort("timeout", false), options.timeoutMs);
+      try {
+        this.transport.sendMessage({ jsonrpc: "2.0", id, method, params });
+      } catch (error) {
+        finish(() => reject(error));
+      }
+    });
+  }
+  debugSnapshot() {
+    return { pendingRequests: this.pendingRequests.size, tombstones: this.lateResponseTombstones.size };
+  }
+  rememberTombstone(id) {
+    this.lateResponseTombstones.add(id);
+    while (this.lateResponseTombstones.size > 1024) {
+      const first = this.lateResponseTombstones.values().next().value;
+      if (first === undefined)
+        break;
+      this.lateResponseTombstones.delete(first);
+    }
+  }
+  async handleIncomingMessage(message) {
+    if ("method" in message)
+      return this.handleIncomingRequest(message);
+    if (!("id" in message))
+      return;
+    const id = message.id;
+    if (this.lateResponseTombstones.delete(id))
+      return;
+    const pending = this.pendingRequests.get(id);
+    if (!pending)
+      return;
+    if ("error" in message && typeof message.error === "object" && message.error !== null) {
+      const remote = message.error;
+      pending.reject(remote.data === undefined ? remote.message ?? "Something went wrong" : new RemoteJsonRpcError(remote));
+    } else if ("result" in message)
+      pending.resolve(message.result);
+  }
+  rejectPendingRequests(reason) {
+    const pending = [...this.pendingRequests.values()];
+    this.pendingRequests.clear();
+    for (const request of pending) {
+      request.cleanup();
+      request.reject(request.disconnectedError(reason));
+    }
+  }
+  async handleIncomingRequest(request) {
+    const method = typeof request.method === "string" ? request.method : "";
+    if (!("id" in request)) {
+      for (const handler2 of this.eventHandlers.get(method) ?? [])
+        handler2(request.params);
+      return;
+    }
+    const handler = this.requestHandlers.get(method);
+    if (!handler) {
+      this.transport.sendMessage({ jsonrpc: "2.0", id: request.id, error: { code: -1, message: `No handler registered for method: ${method}` } });
+      return;
+    }
+    try {
+      const result = await handler(request.params);
+      this.transport.sendMessage({ jsonrpc: "2.0", id: request.id, result });
+    } catch (error) {
+      this.transport.sendMessage({
+        jsonrpc: "2.0",
+        id: request.id,
+        error: { code: 1, message: error instanceof Error ? error.message : String(error) }
+      });
+    }
+  }
+}
+
+// runtime/trusted-service.ts
+var bossBrowserServiceName = "boss_browser";
+function createBossBrowserRpc(globals) {
+  const nodeRepl = globals.nodeRepl;
+  if (typeof nodeRepl?.rpc !== "function") {
+    throw new Error("BOSS_BROWSER_SERVICE_UNAVAILABLE: Boss投递 requires its isolated boss_repl service. " + "Use the Boss投递 MCP JavaScript tool; changing NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S cannot initialize this runtime.");
+  }
+  const rpc = nodeRepl.rpc.bind(nodeRepl);
+  return async (method, params) => {
+    try {
+      return await rpc(bossBrowserServiceName, { method, params });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`BOSS_BROWSER_SERVICE_UNAVAILABLE: ${message}. ` + "Start the plugin-provided boss_repl service; do not add a legacy Browser Client hash.", { cause: error });
+    }
+  };
+}
+
 // browser-runtime.generated.js
 import { platform as GP } from "node:os";
 import * as b_ from "node:os";
@@ -12574,7 +12883,11 @@ function B3(t4) {
 }
 var Za = {};
 I(Za, { PayloadSchema: () => uv, ResultSchema: () => M3, commandType: () => cv, create: () => F3 });
-var uv = l.object({ browser_id: l.string(), tab_id: l.string() });
+var uv = l.object({
+  browser_id: l.string(),
+  tab_id: l.string(),
+  timeout_ms: l.number().int().positive().optional()
+});
 var M3 = l.object({ dom_snapshot: l.string() });
 var cv = "playwright_dom_snapshot";
 function F3(t4) {
@@ -13705,8 +14018,23 @@ var $o = class {
     });
     return qc(n.data);
   }
-  async domSnapshot() {
-    return (await this.#r.send({ command: Za.create({ browser_id: this.#e, tab_id: this.#t }) })).dom_snapshot;
+  async domSnapshot(e = {}) {
+    let r = Number(this.#t);
+    return await domSnapshotOperations.run({
+      key: `${this.#e}:${this.#t}`,
+      operation: "playwright.domSnapshot",
+      tabId: r,
+      timeoutMs: e.timeoutMs,
+      signal: e.signal,
+      execute: async ({ operationId: n, signal: o, timeoutMs: i }) => (await this.#r.send({
+        command: Za.create({ browser_id: this.#e, tab_id: this.#t, timeout_ms: i }),
+        operation: "playwright.domSnapshot",
+        operationId: n,
+        signal: o,
+        tabId: r,
+        timeoutMs: i
+      })).dom_snapshot
+    });
   }
 };
 var Wo = class {
@@ -14721,14 +15049,15 @@ var pi = class {
   async display(e) {
     await this.displaySideEffect(e);
   }
-  async send({ command: e, timeoutMs: r }) {
-    let n = e.toJSON(), o = await this.executeAgentCommand({
-      ...n,
+  async send({ command: e, timeoutMs: r, signal: n, operationId: o, operation: i, tabId: s }) {
+    let a = e.toJSON(), u = await this.executeAgentCommand({
+      ...a,
       client_timeout_ms: typeof r == "number" && r > 0 ? r : undefined
-    }), i = await e6(o, this.displaySideEffect);
-    if (i == null)
+    }, { signal: n, operationId: o, operation: i, tabId: s });
+    let c = await e6(u, this.displaySideEffect);
+    if (c == null)
       throw new Error("transport send returned empty response");
-    return i;
+    return c;
   }
 };
 var e6 = async (t4, e) => {
@@ -14875,6 +15204,7 @@ var du = class {
     }
   }
 };
+du = CancellableJsonRpcEndpoint;
 function fi(t4, e) {
   return new Error(`${t4} does not support command "${e.type}".`);
 }
@@ -21959,7 +22289,22 @@ var Yl = class extends qj {
     });
   }
   async executeTargetCdp(r, n, o, i = {}) {
-    return this.throwIfJsDialogBlocksMethod(r.tabId, n), Be(i), await this.ensureAttachedTab(r.tabId), i.prepareDispatch != null && await V1(i, i.prepareDispatch), await nm("browser_use.cdp.execute", {
+    throwIfBrowserOperationAborted(i.signal, i.operation ?? "browser.operation", r.tabId, i.operationId);
+    try {
+      this.throwIfJsDialogBlocksMethod(r.tabId, n);
+    } catch (s) {
+      if (i.operationId != null)
+        throw new BrowserOperationError({
+          operation: i.operation ?? "browser.operation",
+          tabId: r.tabId,
+          reason: "dialog",
+          dialogDetected: true,
+          browserCleanupComplete: true,
+          requestId: i.operationId
+        }, s instanceof Error ? s.message : String(s));
+      throw s;
+    }
+    return Be(i), await this.ensureAttachedTab(r.tabId), i.prepareDispatch != null && await V1(i, i.prepareDispatch), await nm("browser_use.cdp.execute", {
       "browser_use.cdp.domain": K1(n),
       "browser_use.cdp.method": n,
       "browser_use.tab.id": r.tabId,
@@ -21974,7 +22319,10 @@ var Yl = class extends qj {
           method: n,
           commandParams: o ?? {},
           ...i.preserveDebuggerOnTimeout === true ? { preserveDebuggerOnTimeout: true } : {},
-          timeoutMs: s
+          timeoutMs: s,
+          operationId: i.operationId,
+          operation: i.operation,
+          signal: i.signal
         };
         if (i.expressionCacheKey == null)
           return await this.api.executeCdp(a);
@@ -21982,8 +22330,11 @@ var Yl = class extends qj {
           throw new Error("Cached CDP execution requires an expression");
         return await this.api.executeCdpWithCachedExpression({ ...a, commandParams: o }, i.expressionCacheKey);
       } catch (s) {
-        if ((s === "Debugger unattached" || typeof s == "string" && s.includes("Debugger is not attached")) && (this.forgetAttachedTab(r.tabId), r.sessionId == null && r.targetId == null))
-          return this.executeTargetCdp(r, n, o, i);
+        if ((s === "Debugger unattached" || typeof s == "string" && s.includes("Debugger is not attached")) && (this.forgetAttachedTab(r.tabId), r.sessionId == null && r.targetId == null && (i.debuggerRetryCount ?? 0) < 1))
+          return this.executeTargetCdp(r, n, o, {
+            ...i,
+            debuggerRetryCount: (i.debuggerRetryCount ?? 0) + 1
+          });
         if (Jj(s)) {
           let a = new Error("Browser Use CDP command timed out");
           a.name = "CdpCommandTimeoutError";
@@ -22811,29 +23162,33 @@ var nI = " >> internal:control=enter-frame >> ";
 var y9 = 500;
 var _9 = 1000;
 var iI = y("playwright_dom_snapshot", async (t25, e) => {
-  let r = de(t25), n = await e.playwright.evaluateOnPlaywrightPage(t25.tab_id, (s) => {
+  let r = de(t25), o = {
+    operation: t25.client_operation_name ?? "playwright.domSnapshot",
+    operationId: t25.client_operation_id,
+    signal: t25.client_abort_signal
+  }, n = await e.playwright.evaluateOnPlaywrightPage(t25.tab_id, (s5) => {
     let a = document.body || document.documentElement;
     if (!a)
       return { full: "", iframeDepths: {}, iframeRefs: [] };
-    let u = s.incrementalAriaSnapshot(a, { mode: "ai" }), c = u.iframeRefs.filter((d) => {
+    let u = s5.incrementalAriaSnapshot(a, { mode: "ai" }), c = u.iframeRefs.filter((d) => {
       if (!(d in u.iframeDepths))
         return false;
       try {
-        let [p] = s.querySelectorAll(s.parseSelector(`aria-ref=${d}`), a);
-        return p != null && p.getAttribute("aria-hidden") !== "true" && s.elementState(p, "visible").matches === true;
+        let [p] = s5.querySelectorAll(s5.parseSelector(`aria-ref=${d}`), a);
+        return p != null && p.getAttribute("aria-hidden") !== "true" && s5.elementState(p, "visible").matches === true;
       } catch {
         return false;
       }
     });
     return { ...u, iframeRefs: c };
-  }, { timeoutMs: r }), o = e.isIabBackend ? Date.now() + _9 : undefined, i = await sI(e, t25.tab_id, n, r, undefined, o);
-  return { dom_snapshot: S9(i) };
+  }, { ...o, timeoutMs: r }), i = e.isIabBackend ? Date.now() + _9 : undefined, s = await sI(e, t25.tab_id, n, r, undefined, i, o);
+  return { dom_snapshot: S9(s) };
 });
-async function sI(t25, e, r, n, o, i) {
+async function sI(t25, e, r, n, o, i, q) {
   let s = r.iframeRefs.filter((c) => (c in r.iframeDepths));
   if (!s.length || i != null && Date.now() >= i)
     return r.full;
-  let a = new Map(await Promise.all(s.map(async (c) => [c, await w9(t25, e, c, n, o, i)]))), u = [];
+  let a = new Map(await Promise.all(s.map(async (c) => [c, await w9(t25, e, c, n, o, i, q)]))), u = [];
   for (let c of r.full.split(`
 `)) {
     let d = x9(c);
@@ -22853,7 +23208,7 @@ async function sI(t25, e, r, n, o, i) {
   return u.join(`
 `);
 }
-async function w9(t25, e, r, n, o, i) {
+async function w9(t25, e, r, n, o, i, q) {
   try {
     let s = o ? `${o}${nI}aria-ref=${r}` : `aria-ref=${r}`;
     if (i != null && Date.now() >= i)
@@ -22870,8 +23225,8 @@ async function w9(t25, e, r, n, o, i) {
         }
       });
       return { ...p, iframeRefs: f };
-    }, { ...i == null ? {} : { deadlineMs: i }, retry: false, timeoutMs: a });
-    return await sI(t25, e, u, n, s, i);
+    }, { ...q, ...i == null ? {} : { deadlineMs: i }, retry: false, timeoutMs: a });
+    return await sI(t25, e, u, n, s, i, q);
   } catch {
     return null;
   }
@@ -24310,6 +24665,9 @@ var Vd = class t25 {
           const injected = window.${t25.injectedConstant};
           return await (${o})(injected, ${ab(n.arg)});
         })()`, {
+      operation: n.operation,
+      operationId: n.operationId,
+      signal: n.signal,
       telemetryAttrs: zn({ operation: En("page"), phase: "page_eval" }),
       timeoutMs: n.timeoutMs
     });
@@ -24853,6 +25211,7 @@ var Vd = class t25 {
   async ensurePlaywrightInjectedInTarget(e, r = {}, n) {
     let o = Vu(e, n), i = w7(r.telemetryAttrs) ?? "unknown";
     this.playwrightInjectedTargets.has(o) || (se(r), Hd(await this.callRuntimeEvaluateInExecutionTarget({ frameId: n, oopifFrameChain: [], target: e }, dk, {
+      ...r,
       timeoutMs: r.timeoutMs,
       ...r.deadlineMs == null ? {} : { deadlineMs: r.deadlineMs },
       telemetryAttrs: zn({ operation: i, phase: "inject_install" })
@@ -29742,25 +30101,39 @@ var up = class extends du {
     return this.sendRequest("ping");
   }
   executeCdp(r) {
-    return this.sendSessionRequest("executeCdp", r);
+    let { signal: n, operationId: o, operation: i, ...s } = r;
+    return this.sendSessionRequest("executeCdp", s, {
+      signal: n,
+      operationId: o,
+      operation: i,
+      tabId: r.target?.tabId,
+      timeoutMs: r.timeoutMs
+    });
   }
   async executeCdpWithCachedExpression(r, n) {
+    let { signal: o, operationId: i, operation: s, ...a } = r, u = {
+      signal: o,
+      operationId: i,
+      operation: s,
+      tabId: r.target?.tabId,
+      timeoutMs: r.timeoutMs
+    };
     if (this.cachedExpressionSupport == null || await this.cachedExpressionSupport) {
-      let o = { ...r.commandParams };
-      this.sentCachedExpressions.has(n) && delete o.expression;
-      let i = this.sendSessionRequest(Ib, { ...r, commandParams: o, expressionCacheKey: n });
-      this.sentCachedExpressions.add(n), this.cachedExpressionSupport == null && (this.cachedExpressionSupport = i.then(() => true, (s) => s !== vP));
+      let c = { ...a.commandParams };
+      this.sentCachedExpressions.has(n) && delete c.expression;
+      let d = this.sendSessionRequest(Ib, { ...a, commandParams: c, expressionCacheKey: n }, u);
+      this.sentCachedExpressions.add(n), this.cachedExpressionSupport == null && (this.cachedExpressionSupport = d.then(() => true, (p) => p !== vP));
       try {
-        let s = await i;
-        if (s.kind === "executed")
-          return s.result;
-        let a = await this.sendSessionRequest(Ib, { ...r, expressionCacheKey: n });
-        if (a.kind === "executed")
-          return a.result;
+        let p = await d;
+        if (p.kind === "executed")
+          return p.result;
+        let f = await this.sendSessionRequest(Ib, { ...a, expressionCacheKey: n }, u);
+        if (f.kind === "executed")
+          return f.result;
         throw new Error("Cached CDP expression refill failed");
-      } catch (s) {
-        if (s !== vP)
-          throw s;
+      } catch (p) {
+        if (p !== vP)
+          throw p;
       }
     }
     return this.executeCdp(r);
@@ -29825,9 +30198,17 @@ var up = class extends du {
   async close() {
     await this.apiTransport.close?.();
   }
-  sendSessionRequest(r, n) {
+  sendSessionRequest(r, n, p = {}) {
     let o = this.getSessionParams();
-    return this.trackTurnEnded && this.turnEndedTracker != null && this.turnEndedTracker.track({ session_id: o.session_id, turn_id: o.turn_id }, this.turnEnded), this.sendRequest(r, { ...n, ...o });
+    return this.trackTurnEnded && this.turnEndedTracker != null && this.turnEndedTracker.track({ session_id: o.session_id, turn_id: o.turn_id }, this.turnEnded), this.sendRequest(r, { ...n, ...o }, {
+      ...p,
+      ...p.operationId == null ? {} : {
+        cancelRequest: {
+          method: "cancelBrowserOperation",
+          params: { operationId: p.operationId, ...o }
+        }
+      }
+    });
   }
   getSessionParams() {
     let r = this.getTurnMetadata();
@@ -30608,27 +30989,34 @@ async function DG(t26, e, r, n) {
   } catch {}
   t26.nodeRepl?.setResponseMeta(UP({ backend: e, browserId: r.browserId, currentUrl: o }));
 }
-async function ATe({ elicitationDisplayName: t26, globals: e }) {
+async function ATe({
+  elicitationDisplayName: t26,
+  globals: e,
+  __serviceMode: __bossServiceMode = false
+}) {
   sk(), Ve("browser_use_invocation_started", "multi", {
     backend: "multi",
     platform: GP(),
     release: Sn
   });
-  let r = e;
+  let r = e, __bossRpc = __bossServiceMode ? null : createBossBrowserRpc(e);
   try {
-    if (vu() == null)
+    if (__bossServiceMode && vu() == null)
       throw new Error(Ch());
   } catch (f) {
     throw ae(f), f;
   }
-  let n = new fp(qE()), o = new Map, i = PG ??= VP();
+  let n = __bossServiceMode ? new fp(qE()) : null, o = new Map, i = PG ??= VP(), __bossTransport;
   Pb && await Pb(), Pb = async () => {
-    await Promise.all([...o.values()].map((f) => f.dispose())), await n.dispose();
+    domSnapshotOperations.cancelAll("cancelled"), await Promise.all([...o.values()].map((f) => f.dispose())), await n?.dispose();
   };
-  let s = createNodeReplDisplayBridge(e), a = createDisplay({ displayBridge: s, displayTruncateMaxChars: 1e5 }), [u, c] = await Promise.all([NP(), BP()]), d = new gp({
+  let s = createNodeReplDisplayBridge(e), a = createDisplay({ displayBridge: s, displayTruncateMaxChars: 1e5 }), [__bossSetup, c] = await Promise.all([
+    __bossServiceMode ? NP().then((apiManifest) => ({ apiManifest, disabledMemberIds: [...UE()] })) : __bossRpc("setup", { environment: "codex-app" }),
+    BP()
+  ]), u = __bossSetup.apiManifest, d = new gp({
     apiManifest: u,
     documentManifest: c,
-    disabledMemberIds: UE(),
+    disabledMemberIds: new Set(__bossSetup.disabledMemberIds),
     readDocumentation: Rb
   }), p = new Lo({
     createBrowser: d.createBrowser,
@@ -30636,10 +31024,20 @@ async function ATe({ elicitationDisplayName: t26, globals: e }) {
     onBrowserUsed: ({ type: f }) => {
       e.nodeRepl?.setResponseMeta(hp({ backend: xr(f), params: {} }));
     },
-    transport: new pi({
+    transport: new pi(__bossTransport = {
       displaySideEffect: a,
-      async executeAgentCommand(f) {
+      async executeAgentCommand(f, g5 = {}) {
+        if (!__bossServiceMode)
+          return await __bossRpc("execute", f);
+        if (n == null)
+          throw new Error("Boss投递 service backend is unavailable");
         let { type: m, ...h } = f, b = kG.find((k) => k.type === m);
+        Object.defineProperties(h, {
+          client_abort_signal: { value: g5.signal },
+          client_operation_id: { value: g5.operationId },
+          client_operation_name: { value: g5.operation },
+          client_operation_tab_id: { value: g5.tabId }
+        });
         if (b)
           return await mu(m, h, async () => b(h, n));
         if (!("browser_id" in h))
@@ -30665,10 +31063,12 @@ async function ATe({ elicitationDisplayName: t26, globals: e }) {
         } finally {
           if (B) {
             let k;
-            try {
-              k = await KP(A, h, { readCurrentUrl: true });
-            } catch {
-              k = undefined;
+            if (!h.client_abort_signal?.aborted) {
+              try {
+                k = await KP(A, h, { readCurrentUrl: true });
+              } catch {
+                k = undefined;
+              }
             }
             i.recordCommand(m, {
               backend: S,
@@ -30686,6 +31086,13 @@ async function ATe({ elicitationDisplayName: t26, globals: e }) {
     })
   });
   r.agent = d.wrapAgent(p), r.display = a, Ve("browser_use_setup"), Ve("browser_use_invocation_ready", "multi", { backend: "multi", platform: GP(), release: Sn });
+  if (__bossServiceMode)
+    return {
+      apiManifest: u,
+      disabledMemberIds: [...__bossSetup.disabledMemberIds],
+      dispose: async () => await Pb?.(),
+      executeAgentCommand: async (command) => await __bossTransport.executeAgentCommand(command)
+    };
 }
 async function KP(t26, e, r = {}) {
   if (!OG(e))

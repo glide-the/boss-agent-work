@@ -11,4 +11,6 @@ fi
 
 "$VENV/bin/python" -m pip install --disable-pip-version-check -r "$WORKSPACE_ROOT/requirements-dev.txt"
 
+"$WORKSPACE_ROOT/scripts/install-project-skills.sh"
+
 echo "Development environment ready: $VENV"
