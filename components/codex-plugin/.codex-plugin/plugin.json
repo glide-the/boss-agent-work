@@ -1,6 +1,6 @@
 {
   "name": "chrome-dev",
-  "version": "26.707.30751-standalone.8",
+  "version": "26.707.30751-standalone.9",
   "description": "Boss投递：通过独立的 Chrome 扩展与 Native Messaging Host，辅助完成 BOSS 直聘岗位浏览、筛选、投递与沟通流程。",
   "author": {
     "name": "Local Codex Workspace"

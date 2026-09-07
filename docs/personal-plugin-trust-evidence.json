@@ -1,13 +1,13 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "observedAt": "2026-09-07",
-  "branch": "codex/release-package-hygiene",
+  "branch": "codex/void-json-rpc-response",
   "identity": {
     "marketplace": "codex-chrome-automation-local",
     "plugin": "chrome-dev",
     "selector": "chrome-dev@codex-chrome-automation-local",
     "versionBefore": "26.707.30751-standalone.4",
-    "versionInstalled": "26.707.30751-standalone.8",
+    "versionInstalled": "26.707.30751-standalone.9",
     "scope": "user",
     "extensionId": "jigmpnbdhhempldjgegphdgkochgpagi",
     "nativeHostName": "com.openai.codexextension.dev",
@@ -16,12 +16,12 @@
   },
   "fingerprints": {
     "legacyVersionBrowserClientSha256": "9599a8a2520d1e064e3965e4cbf82240f3179cf935ab355dca3f96429c52e6e6",
-    "installedBrowserClientSha256": "67abc484942685467774857a3bcc228ba9c97e040efa7eae88923d01471afe3a",
-    "installedBrowserServiceSha256": "114346d861435122511479f30477a8af7df0253d8f988e9f9191a6272d049c84",
+    "installedBrowserClientSha256": "38a49b370f3ea42d20d5b89567d2a5064fb89720c34c0511d48f4489a24d5afd",
+    "installedBrowserServiceSha256": "04ad2c2fe354c61f676844efa593da79a53837e7c067afdd43f907190b115f86",
     "installedLauncherSha256": "0c6a9d6ed3072a489e068b7279a4427bcc87a19a54d7474ae380bbc286fd56ca",
     "immutableScriptsBackup": {
-      "fileCount": 345,
-      "sha256": "d5537ab072c6cfd1a64d69aec27a3a76dd7b6a0f30eb9925d4d1e42f8b1cdd38"
+      "fileCount": 348,
+      "sha256": "e4f058ccdafa38a8e1028f6a944d9e98f2697efdee514dab76868689d7774d1f"
     }
   },
   "legacyTrust": {
@@ -68,20 +68,20 @@
   "actualInstall": {
     "installed": true,
     "enabled": true,
-    "versionRoot": "/Users/dmeck/.codex/plugins/cache/codex-chrome-automation-local/chrome-dev/26.707.30751-standalone.8",
+    "versionRoot": "/Users/dmeck/.codex/plugins/cache/codex-chrome-automation-local/chrome-dev/26.707.30751-standalone.9",
     "latestPointsToVersion": true,
     "marketplaceAlreadyAdded": true,
     "preflightReady": true,
     "effectiveTrust": "isolated-service-authorized",
-    "latestInitializationAction": "create-link",
+    "latestInitializationAction": "replace-symlink-then-no-op",
     "nativeHostRegistered": true,
-    "connectionVerified": false,
+    "connectionVerified": true,
     "applicationSupportRegistryEntryCount": 25,
     "unrelatedApplicationSupportEntriesPreserved": 24
   },
   "backups": {
     "configBeforeApproval": "/Users/dmeck/.codex/backups/personal-plugin-mcp-approval-b55ba13c-a3fb-47e5-a48d-909dd0c82ddd/config.toml.before",
-    "latestNativeHostSnapshot": "/Users/dmeck/.codex/backups/personal-plugin-native-host-98627cb2-e1a0-4737-af1f-487553c2637e/snapshot.json"
+    "latestNativeHostSnapshot": "/Users/dmeck/.codex/backups/personal-plugin-native-host-ef3748ff-071f-406f-a88d-5863ab0480dc/snapshot.json"
   },
   "configChanges": {
     "pluginInstallerRemovedMarketplaceLastUpdated": true,
@@ -93,7 +93,7 @@
     "writeProtocol": "Codex App Server config/read + config/batchWrite with expectedVersion"
   },
   "tests": {
-    "browserClientUnitTests": { "passed": 33, "failed": 0 },
+    "browserClientUnitTests": { "passed": 34, "failed": 0 },
     "electronTests": { "passed": 18, "failed": 0 },
     "nativeHostTests": { "passed": 10, "failed": 0 },
     "canonicalArtifactCount": 15,
@@ -103,13 +103,36 @@
     "marketplaceProfiles": ["baseline", "extension-dev", "full-reconstructed"],
     "package": "pass",
     "desktopGuiReload": "unverified",
-    "freshTaskId": "01a07a86-c1a4-7a53-8dbe-e9a161f175c9",
+    "freshTaskId": "01a07ac8-ac88-72e0-8224-719ceaf44992",
     "bossReplToolDiscovery": "pass",
-    "liveChromeTabs": { "status": "pass", "backend": "chrome", "tabCount": 0, "operation": "browser.tabs.list" }
+    "liveChrome": {
+      "status": "pass",
+      "backend": "chrome",
+      "nameSessionDurationMs": 15,
+      "example": { "durationMs": 492, "url": "https://example.com/", "title": "Example Domain" },
+      "boss": { "durationMs": 468, "url": "https://www.zhipin.com/web/geek/jobs?city=101210100&query=AI%E8%87%AA%E5%8A%A8%E5%8C%96", "title": "BOSS直聘" },
+      "tabFinalized": true,
+      "sideEffects": "none"
+    },
+    "desktopGuiCatalogRefresh": {
+      "status": "unverified",
+      "preRestartTaskId": "01a07ac3-b092-7ca0-a0a8-934296665f20",
+      "observedVersion": "26.707.30751-standalone.8",
+      "browserOperationsExecuted": false
+    }
+  },
+  "postReleaseFix": {
+    "affectedVersion": "26.707.30751-standalone.8",
+    "fixedVersion": "26.707.30751-standalone.9",
+    "rootCause": "The cancellable JSON-RPC endpoint left matched id-only successful responses pending when JSON serialization omitted result: undefined.",
+    "change": "Resolve every matched response without a structured error using message.result, which is undefined for void responses.",
+    "nativeHostOrExtensionChangeRequired": false,
+    "legacyTrustVariableChanged": false,
+    "design": "docs/browser-void-response-hang-design.md"
   },
   "packages": {
-    "boss-delivery-baseline.tar.gz": "d13aadb8fd1257f325d3b1570939ebe0ec0f147e6b8c823a0ef71f2abd7c208a",
-    "boss-delivery-extension-dev.tar.gz": "8a69270fa7a81e5d52da77c1e23375b0e95d3416f9bbce2f22364f428f6fd0d1",
-    "boss-delivery-full-reconstructed.tar.gz": "831040d89e4ac2ad9b084c0880f96ca1461279214356849d2ea8f164499d9cea"
+    "boss-delivery-baseline.tar.gz": "e345f2548f9ecf086bd07cb6a77a3baf72b0af1dff3fc1f73da3fade004a4607",
+    "boss-delivery-extension-dev.tar.gz": "8c56b3dcb83efceaee586b78f4fd022b79b8f21824374e2ec2b36620711de41c",
+    "boss-delivery-full-reconstructed.tar.gz": "ac9e949248263680410475f8d7f0644c17e53a5813aa36e0a48b7770c8b76978"
   }
 }

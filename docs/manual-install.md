@@ -297,7 +297,7 @@ test -x "$CODEX_CLI_BIN"
 
 ```text
 pluginId: chrome-dev@codex-chrome-automation-local
-version: 26.707.30751-standalone.8
+version: 26.707.30751-standalone.9
 ```
 
 Codex CLI 负责安装插件并更新启用记录，不负责本项目的 Native Host 注册。若正在运行的 Electron 宿主尚未接入本项目的 `onDidInstall` lifecycle，还需要执行下一步。
