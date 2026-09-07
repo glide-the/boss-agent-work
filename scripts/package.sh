@@ -12,8 +12,16 @@ for profile in baseline extension-dev full-reconstructed; do
   test -d "$source_dir/marketplace"
   test -d "$source_dir/electron-app"
   archive="$ARTIFACTS/boss-delivery-$profile.tar.gz"
-  tar -czf "$archive" -C "$source_dir" marketplace electron-app
+  COPYFILE_DISABLE=1 tar -czf "$archive" -C "$source_dir" marketplace electron-app
   (cd "$ARTIFACTS" && shasum -a 256 "$(basename "$archive")" > "$(basename "$archive").sha256")
-  tar -tzf "$archive" >/dev/null
+  archive_listing="$(tar -tzf "$archive")"
+  if rg -q '(^|/)(\._[^/]*|\.DS_Store|__MACOSX)(/|$)' <<< "$archive_listing"; then
+    echo "Refusing archive with macOS metadata: $archive" >&2
+    exit 4
+  fi
+  if rg -q '(^|/)\.\.?(/|$)' <<< "$archive_listing"; then
+    echo "Refusing archive with unsafe path entry: $archive" >&2
+    exit 4
+  fi
   echo "Packaged: $archive"
 done

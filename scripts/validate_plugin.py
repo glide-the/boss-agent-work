@@ -370,6 +370,12 @@ def validate_mcp_server_entries(
             errors.append(f"{source_label} server names must be non-empty strings")
         if not isinstance(value, dict):
             errors.append(f"{source_label} server `{key}` must be an object")
+            continue
+        omitted_surfaces = value.get("omit_tools_from")
+        if key == "boss_repl" and isinstance(omitted_surfaces, list) and "code_mode" in omitted_surfaces:
+            errors.append(
+                f"{source_label} server `boss_repl` must expose its tools to code mode"
+            )
 
 
 def load_companion_json_object(

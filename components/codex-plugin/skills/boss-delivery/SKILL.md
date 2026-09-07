@@ -27,6 +27,8 @@ These setup details are internal. User-facing progress updates should be less te
 
 The `browser-client` module is the core entry point for browser use, and is available under `scripts/browser-client.mjs` in this plugin's root directory. ALWAYS import it using an absolute path. IMPORTANT: If this path cannot be found, stop and report that this plugin is missing `scripts/browser-client.mjs`. NEVER use the built in `browser-client` library.
 
+Derive the plugin root from the actual path of this `SKILL.md` (`../..`, resolved to its real path). Never hardcode a cache version such as `standalone.5`; upgrades replace the active version directory, and a version literal can point at a removed installation. If the skill path reported by the host no longer exists, the Desktop plugin catalog is stale: refresh or fully restart Desktop, then start a new task before browser work.
+
 Run browser setup code through this plugin's isolated `boss_repl` `js` tool. The callable tool id typically appears as `mcp__boss_repl__js`. If it is not already available, use tool discovery for `boss_repl js` without setting a result limit. Do not use the shared `node_repl` or `cua_repl` server for this plugin: only `boss_repl` registers the personal `boss_browser` service, and the plugin intentionally does not use the legacy Browser Client hash allowlist. You need the `js` execution tool; `js_reset` only clears state. If `js` is still unavailable, reload the plugin or restart the Desktop app, then search once more with `limit: 10`.
 
 Initialize the runtime once per fresh Node session, select Chrome, and immediately read its complete documentation:

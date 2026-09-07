@@ -30676,12 +30676,10 @@ function UP({ backend: t26, browserId: e, currentUrl: r }) {
 }
 function mp(t26, e, r) {
   let n = {};
-  r.browserId != null && (n.browserId = r.browserId), r.openTabIds != null && (n.openTabIds = r.openTabIds), r.sessionEnded != null && (n.sessionEnded = r.sessionEnded), r.screenshot != null && (n.screenshot = r.screenshot);
-  if (typeof t26.nodeRepl?.setResponseMeta == "function")
-    t26.nodeRepl.setResponseMeta({
-      [LP]: true,
-      ...hp({ backend: e, currentUrl: r.currentUrl, params: r.params ?? {}, surfaceDetails: n })
-    });
+  r.browserId != null && (n.browserId = r.browserId), r.openTabIds != null && (n.openTabIds = r.openTabIds), r.sessionEnded != null && (n.sessionEnded = r.sessionEnded), r.screenshot != null && (n.screenshot = r.screenshot), t26.nodeRepl?.setResponseMeta({
+    [LP]: true,
+    ...hp({ backend: e, currentUrl: r.currentUrl, params: r.params ?? {}, surfaceDetails: n })
+  });
 }
 async function jP({
   backend: t26,
@@ -30693,7 +30691,7 @@ async function jP({
   params: s,
   result: a
 }) {
-  if (typeof i.nodeRepl?.setResponseMeta != "function")
+  if (i.nodeRepl?.setResponseMeta == null)
     return;
   let u = { browserId: n.browserId };
   if (e && r === "finalize_tabs") {
@@ -30989,8 +30987,7 @@ async function DG(t26, e, r, n) {
   try {
     o = await KP(r, n, { readCurrentUrl: true });
   } catch {}
-  if (typeof t26.nodeRepl?.setResponseMeta == "function")
-    t26.nodeRepl.setResponseMeta(UP({ backend: e, browserId: r.browserId, currentUrl: o }));
+  t26.nodeRepl?.setResponseMeta(UP({ backend: e, browserId: r.browserId, currentUrl: o }));
 }
 async function ATe({
   elicitationDisplayName: t26,
@@ -31025,8 +31022,7 @@ async function ATe({
     createBrowser: d.createBrowser,
     documentation: new fn(Rb),
     onBrowserUsed: ({ type: f }) => {
-      if (typeof e.nodeRepl?.setResponseMeta == "function")
-        e.nodeRepl.setResponseMeta(hp({ backend: xr(f), params: {} }));
+      e.nodeRepl?.setResponseMeta(hp({ backend: xr(f), params: {} }));
     },
     transport: new pi(__bossTransport = {
       displaySideEffect: a,

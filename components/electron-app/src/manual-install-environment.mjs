@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { inspectPluginTrust, resolveUserCodexHome } from "./plugin-trust-preflight.mjs";
 import { backupNativeHostTargets, sealNativeHostBackup } from "./native-host-backup.mjs";
+import { writeBossPluginMcpApproval } from "./codex-config-client.mjs";
 import os from "node:os";
 import path from "node:path";
 
@@ -14,6 +15,7 @@ import {
 // Keep caller environment out of serializable diagnostic output.
 const planEnvironments = new WeakMap();
 const planServiceProbes = new WeakMap();
+const planConfigWriters = new WeakMap();
 
 const valueFlags = new Map([
   ["--codex-home", "codexHome"],
@@ -118,6 +120,7 @@ export async function resolveManualInstallPlan(input = {}) {
   };
   planEnvironments.set(plan, { ...(input.environment ?? process.env) });
   if (input.serviceProbe != null) planServiceProbes.set(plan, input.serviceProbe);
+  if (input.configWriter != null) planConfigWriters.set(plan, input.configWriter);
   return plan;
 }
 
@@ -155,10 +158,29 @@ export async function reconcileManualInstall(plan) {
     } catch (error) { if (error.code !== "ENOENT") throw new Error(`CONFIG_CONFLICT: ${filePath}: ${error.message}`); }
   }
   const configPath = path.join(path.dirname(installer.extensionHostPath(plan.versionRoot, plan.platform, plan.architecture)), "extension-host-config.json");
-  const backup = await backupNativeHostTargets(plan.codexHome, [...manifests, ...registries, configPath, latestRoot]);
+  const userConfigPath = path.join(plan.codexHome, "config.toml");
+  const backup = await backupNativeHostTargets(plan.codexHome, [...manifests, ...registries, configPath, latestRoot, userConfigPath]);
   let result;
   let failure;
   try {
+    if (trust.mcpApproval?.configured !== true) {
+      const configWriter = planConfigWriters.get(plan) ?? writeBossPluginMcpApproval;
+      await configWriter({
+        codexCliPath: plan.runtimePaths.codexCliPath,
+        codexHome: plan.codexHome,
+        environment,
+      });
+      const updatedTrust = await inspectPluginTrust({
+        ...plan,
+        environment,
+        expectedBrowserClientSha256: trust.fingerprint,
+        serviceProbe: planServiceProbes.get(plan),
+      });
+      if (!updatedTrust.ready || updatedTrust.mcpApproval?.configured !== true) {
+        throw new Error(updatedTrust.issues.map((item) => `${item.code}: ${item.message}`).join("\n") ||
+          "MCP_TOOL_APPROVAL_REQUIRED: Codex did not apply the personal boss_repl js approval.");
+      }
+    }
     result = await initializeBossPluginNativeHost({
       architecture: plan.architecture,
       environment,
@@ -170,7 +192,10 @@ export async function reconcileManualInstall(plan) {
       versionRoot: plan.versionRoot,
     });
   } catch (error) { failure = error; }
-  if (failure) throw new Error(`NATIVE_HOST_REGISTRATION_ERROR: ${failure.message}. Recovery snapshot: ${backup.filePath}`, { cause: failure });
+  if (failure) {
+    await sealNativeHostBackup(backup);
+    throw new Error(`INITIALIZATION_ERROR: ${failure.message}. Recovery snapshot: ${backup.filePath}`, { cause: failure });
+  }
   await sealNativeHostBackup(backup);
   return { ...result, backupPath: backup.filePath, connectionVerified: false, notice: "DESKTOP_RELOAD_REQUIRED: If the host has cached prior registration, reload it before read-only connection verification." };
 }

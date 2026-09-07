@@ -44,14 +44,14 @@ BOSS_PLUGIN_EXPECTED_BROWSER_CLIENT_SHA256="<受审查产物的64位SHA-256>" \
 bun components/electron-app/bin/reconcile-native-host.mjs --codex-home /absolute/personal-codex --dry-run --json
 ```
 
-命令逐项报告 `PLUGIN_NOT_INSTALLED`、`PLUGIN_DISABLED`、`PLUGIN_UNTRUSTED`、`FINGERPRINT_MISMATCH`、`USER_CONFIG_ERROR`、`INVALID_ENVIRONMENT`、`CONFIG_CONFLICT`、`POLICY_REVIEW_REQUIRED`、`RUNTIME_INCOMPATIBLE` 或 `RUNTIME_UNVERIFIED`。只有真实 `boss_browser` ping 返回匹配 nonce、服务名、协议版本且受信 worker 可见 `nativePipe` 时，`effectiveTrust` 才是 `isolated-service-authorized`；`recorded` 仅保留为旧 allowlist 诊断。
+命令逐项报告 `PLUGIN_NOT_INSTALLED`、`PLUGIN_DISABLED`、`MCP_TOOL_APPROVAL_REQUIRED`、`MCP_TOOL_APPROVAL_CONFLICT`、`MCP_TOOL_DISABLED`、`MCP_SERVER_DISABLED`、`PLUGIN_UNTRUSTED`、`FINGERPRINT_MISMATCH`、`USER_CONFIG_ERROR`、`INVALID_ENVIRONMENT`、`CONFIG_CONFLICT`、`POLICY_REVIEW_REQUIRED`、`POLICY_REJECTED`、`RUNTIME_INCOMPATIBLE` 或 `RUNTIME_UNVERIFIED`。只有真实 `boss_browser` ping 返回匹配 nonce、服务名、协议版本且受信 worker 可见 `nativePipe` 时，`effectiveTrust` 才是 `isolated-service-authorized`；`recorded` 仅保留为旧 allowlist 诊断。
 
-通过前置检查后，注册会先备份 Native Host 目标至所选 CODEX_HOME/backups/personal-plugin-native-host-*/snapshot.json，再调用原注册器。返回 `nativeHostRegistered` 和 `connectionVerified=false`，不再用笼统的 correct 表示整体就绪。同一次初始化成功后的回滚命令：
+通过前置检查后，初始化器先把 `config.toml` 与 Native Host 目标备份至所选 `CODEX_HOME/backups/personal-plugin-native-host-*/snapshot.json`。缺少个人工具授权时，它通过 Codex App Server 只 upsert `plugins."chrome-dev@codex-chrome-automation-local".mcp_servers.boss_repl.tools.js.approval_mode = "approve"`，并使用用户层 `expectedVersion` 防止并发覆盖。显式拒绝、server/tool 禁用和企业覆盖都会停止初始化。
 
 ```bash
 bun components/electron-app/bin/rollback-native-host.mjs /absolute/path/to/snapshot.json
 ```
 
-回滚前检查文件是否在初始化后被其他进程修改，冲突时拒绝覆盖。注册失败保留原始快照供人工恢复，不自动回滚并发写入。config.toml 始终只读，因此不存在需要恢复的信任配置修改。直接 Electron 生命周期 API 仍仅注册 Native Host；它不是信任安装器，也不代表 Browser Client 连接已验收。
+回滚前检查文件是否在初始化后被其他进程修改，冲突时拒绝覆盖。初始化失败也会密封快照，供人工恢复本轮配置和 Host 目标。直接 Electron 生命周期 API 仍仅注册 Native Host；完整的个人授权流程应使用 reconcile CLI。
 
-设计、证据与完整限制见 [personal-plugin-trust-design.md](../../docs/personal-plugin-trust-design.md)。动态服务授权已经验证；真实 Chrome 连接仍需在 Desktop 重新加载插件后的新会话做轻量读取。
+设计、证据与完整限制见 [personal-plugin-trust-design.md](../../docs/personal-plugin-trust-design.md)。新启动的临时 Codex 任务已经发现 `boss_repl` 并完成真实 Chrome 标签页只读调用；当前 Desktop GUI 仍需完整重启后确认工具目录刷新。

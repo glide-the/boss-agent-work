@@ -101,8 +101,9 @@ export async function inspectPluginTrust({ codexHome, versionRoot, runtimePaths,
     const bossRepl = mcp?.mcpServers?.boss_repl;
     if (bossRepl?.command !== runtimePaths.nodePath || bossRepl?.cwd !== "." ||
         !Array.isArray(bossRepl.args) || bossRepl.args.length !== 1 ||
-        bossRepl.args[0] !== "./scripts/launch-browser-service.mjs") {
-      throw new Error("Personal .mcp.json does not declare the isolated boss_repl launcher.");
+        bossRepl.args[0] !== "./scripts/launch-browser-service.mjs" ||
+        (Array.isArray(bossRepl.omit_tools_from) && bossRepl.omit_tools_from.includes("code_mode"))) {
+      throw new Error("Personal .mcp.json must declare the isolated boss_repl launcher and expose it to Codex code mode.");
     }
     const clientUsesPersonalRpc = clientBytes.includes(Buffer.from("boss_browser")) &&
       clientBytes.includes(Buffer.from("BOSS_BROWSER_SERVICE_UNAVAILABLE"));
@@ -128,6 +129,26 @@ export async function inspectPluginTrust({ codexHome, versionRoot, runtimePaths,
     return report;
   }
   if (config.plugins?.[selector]?.enabled !== true) add("PLUGIN_DISABLED", `User config must enable ${selector} through the supported plugin installer.`);
+  const mcpPolicy = config.plugins?.[selector]?.mcp_servers?.boss_repl;
+  const explicitApproval = mcpPolicy?.tools?.js?.approval_mode;
+  const effectiveApproval = explicitApproval ?? mcpPolicy?.default_tools_approval_mode;
+  report.mcpApproval = {
+    configured: effectiveApproval === "approve",
+    keyPath: `plugins."${selector}".mcp_servers.boss_repl.tools.js.approval_mode`,
+    mode: effectiveApproval ?? null,
+  };
+  if (mcpPolicy?.enabled === false) {
+    add("MCP_SERVER_DISABLED", "User config explicitly disables the personal boss_repl MCP server.");
+  }
+  if (Array.isArray(mcpPolicy?.enabled_tools) && !mcpPolicy.enabled_tools.includes("js") ||
+      Array.isArray(mcpPolicy?.disabled_tools) && mcpPolicy.disabled_tools.includes("js")) {
+    add("MCP_TOOL_DISABLED", "User config explicitly disables the personal boss_repl js tool.");
+  }
+  if (effectiveApproval == null) {
+    warn("MCP_TOOL_APPROVAL_REQUIRED", "Initialization will authorize only the personal boss_repl js tool in the user Codex config.");
+  } else if (effectiveApproval !== "approve") {
+    add("MCP_TOOL_APPROVAL_CONFLICT", `User config sets boss_repl js approval_mode to ${JSON.stringify(effectiveApproval)}; refusing to replace an explicit policy.`);
+  }
   const marketplace = config.marketplaces?.[bossPluginIdentity.marketplaceName];
   if (marketplace?.source_type !== "local" || typeof marketplace.source !== "string" || !path.isAbsolute(marketplace.source)) {
     add("CONFIG_CONFLICT", "The personal marketplace must have an absolute local source in user config.");

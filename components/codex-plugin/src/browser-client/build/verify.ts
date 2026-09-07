@@ -501,6 +501,17 @@ async function main(): Promise<void> {
   }
   assert.equal(candidateBrowserSource.includes("#browser-client-baseline"), false);
   assert.equal(
+    candidateBrowserSource.includes("nodeRepl?.setResponseMeta("),
+    false,
+    "Browser runtime must treat optional setResponseMeta as an optional function",
+  );
+  assert.equal(
+    (candidateBrowserSource.match(/typeof [^\n]*nodeRepl\?\.setResponseMeta/g) ?? [])
+      .length >= 4,
+    true,
+    "Browser runtime must guard every response metadata call",
+  );
+  assert.equal(
     candidateBrowserSource.includes(
       'var s6="https://chatgpt.com/backend-api",a6="agent";',
     ),
