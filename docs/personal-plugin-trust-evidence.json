@@ -105,8 +105,8 @@
     "liveChromeTabs": "unverified"
   },
   "packages": {
-    "boss-delivery-baseline.tar.gz": "5587f981bf572f58ab66d850df8789f070586f2d38d937bb2969a2076d7ba9a5",
-    "boss-delivery-extension-dev.tar.gz": "2fd1fdc08dd96d80280513397734d02a2345c0c9b6c6dc591ef596b0b6b06a21",
-    "boss-delivery-full-reconstructed.tar.gz": "7633a4fb5b839ac9989aed0bfc5d81fd1b7fa2708b75e2e9d2bf34bf0c21bb34"
+    "boss-delivery-baseline.tar.gz": "e0623064ac8eaf32a9e7bb4a74b03a86d8eeb5d0e262ba04f3f784c061f56611",
+    "boss-delivery-extension-dev.tar.gz": "f1c860e11bb845a7389509cc06a4dd1e8bb9382f6e3a28451e0f0c9834bebfc1",
+    "boss-delivery-full-reconstructed.tar.gz": "7c697e60a0b8fe47624b4066c4efcae6f70c8f1467094e48dc5790e39f8d41f8"
   }
 }

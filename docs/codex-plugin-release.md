@@ -37,9 +37,9 @@ Chrome 扩展版本：`1.1.5.2`
 
 | 档位 | Chrome Extension 来源 | Native Host 来源 | 用途 | 2026-09-07 SHA-256 |
 | --- | --- | --- | --- | --- |
-| `baseline` | `baselines/chrome-extension` | `baselines/native-host/macos/arm64/extension-host` | 推荐安装和签名基线回归 | `5587f981bf572f58ab66d850df8789f070586f2d38d937bb2969a2076d7ba9a5` |
-| `extension-dev` | `dist/chrome-extension`，由 TypeScript/React 源码构建 | 签名基线 Host | 验证本版本 Dialog/取消协议和扩展改动 | `2fd1fdc08dd96d80280513397734d02a2345c0c9b6c6dc591ef596b0b6b06a21` |
-| `full-reconstructed` | `dist/chrome-extension` | `dist/native-host/macos/arm64/extension-host`，由 Rust 源码构建 | 协议研究和源码重建验证 | `7633a4fb5b839ac9989aed0bfc5d81fd1b7fa2708b75e2e9d2bf34bf0c21bb34` |
+| `baseline` | `baselines/chrome-extension` | `baselines/native-host/macos/arm64/extension-host` | 推荐安装和签名基线回归 | `e0623064ac8eaf32a9e7bb4a74b03a86d8eeb5d0e262ba04f3f784c061f56611` |
+| `extension-dev` | `dist/chrome-extension`，由 TypeScript/React 源码构建 | 签名基线 Host | 验证本版本 Dialog/取消协议和扩展改动 | `f1c860e11bb845a7389509cc06a4dd1e8bb9382f6e3a28451e0f0c9834bebfc1` |
+| `full-reconstructed` | `dist/chrome-extension` | `dist/native-host/macos/arm64/extension-host`，由 Rust 源码构建 | 协议研究和源码重建验证 | `7c697e60a0b8fe47624b4066c4efcae6f70c8f1467094e48dc5790e39f8d41f8` |
 
 表中摘要对应本次最终打包的具体文件。当前归档脚本会保留构建物元数据，重新构建可能产生新的归档摘要；交付时应以同批次生成的 `.sha256` sidecar 为准，不能把表中值当作版本的永久身份。
 
@@ -63,7 +63,7 @@ electron-app/    Electron Main 生命周期模块与手动 reconcile/rollback CL
 | Rust 重建 Host | `components/native-host/` | `dist/native-host/macos/arm64/extension-host` |
 | 签名基线 Host | `baselines/native-host/macos/arm64/extension-host` | 原样进入 `baseline` 和 `extension-dev` |
 
-`components/codex-plugin/scripts-bak/` 是不可变恢复基线，不是当前权威源码，也不会进入 marketplace 包。当前基线摘要是 `85d1bc4f7d456ef75eceab7df6159ebfdfce23de0af51175ec9ba2dc9e579964`（344 个文件）。
+`components/codex-plugin/scripts-bak/` 是不可变恢复基线，不是当前权威源码。发布组装会排除插件的 `scripts-bak/`、`src/` 和 `test/`；安装包只保留运行时脚本、必要依赖、扩展、Host、技能、配置和用户文档，不公开开发依赖、测试夹具或恢复基线。当前不可变基线摘要是 `85d1bc4f7d456ef75eceab7df6159ebfdfce23de0af51175ec9ba2dc9e579964`（344 个文件）。
 
 当前个人运行时文件摘要：
 

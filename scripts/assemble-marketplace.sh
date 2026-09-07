@@ -51,7 +51,11 @@ esac
 rm -rf "$OUTPUT"
 rm -rf "$ELECTRON_OUTPUT"
 mkdir -p "$OUTPUT/.agents/plugins" "$PLUGIN_OUTPUT/extension-host/macos/arm64" "$ELECTRON_OUTPUT"
-rsync -a --exclude 'scripts-bak/' "$WORKSPACE_ROOT/components/codex-plugin/" "$PLUGIN_OUTPUT/"
+rsync -a \
+  --exclude 'scripts-bak/' \
+  --exclude 'src/' \
+  --exclude 'test/' \
+  "$WORKSPACE_ROOT/components/codex-plugin/" "$PLUGIN_OUTPUT/"
 rsync -a "$EXTENSION_SOURCE/" "$PLUGIN_OUTPUT/chrome-extension/"
 rsync -a "$WORKSPACE_ROOT/dist/electron-app/" "$ELECTRON_OUTPUT/"
 install -m 755 "$HOST_SOURCE" "$PLUGIN_OUTPUT/extension-host/macos/arm64/extension-host"
