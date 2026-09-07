@@ -2,16 +2,16 @@
   "action": "deploy",
   "createdAt": "2026-09-07T04:58:55.349Z",
   "backup": {
-    "fileCount": 344,
-    "sha256": "85d1bc4f7d456ef75eceab7df6159ebfdfce23de0af51175ec9ba2dc9e579964"
+    "fileCount": 345,
+    "sha256": "d5537ab072c6cfd1a64d69aec27a3a76dd7b6a0f30eb9925d4d1e42f8b1cdd38"
   },
   "candidate": {
     "fileCount": 347,
-    "sha256": "4e23388eb38e5a8ae2a33ac6d2de5c167610113363f5faa0e267b07020542fc9"
+    "sha256": "cd8f69174913c5312caf05cfa938227c62659f928889b409e4405880e38e65a4"
   },
   "deployed": {
     "fileCount": 346,
-    "sha256": "13b28f3c2cfea2df13324b325a96d82d6f386eb19378f7cc4c2a53a49ed3f155"
+    "sha256": "014a130de38e9253590fae982b97dbec2303dfee0b9e30252f95a30eb91afbdd"
   },
   "deployedOutputs": [
     "browser-client.mjs",

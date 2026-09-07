@@ -34,7 +34,15 @@ async function fixture(t) {
   const config = `[marketplaces.codex-chrome-automation-local]\nsource_type = "local"\nsource = "${root}/marketplace"\n[plugins."${selector}"]\nenabled = true\n[plugins."official@official"]\nenabled = true\n[shell_environment_policy.set]\n${variable} = "${sha256(client)}"\n`;
   await fs.writeFile(configPath, config);
   const serviceProbe = async () => ({ authorized: true, nativePipeAvailable: true, protocolVersion: 1, service: "boss_browser" });
-  const input = { codexHome, versionRoot, resourcesPath, homeDirectory: root, runtimePaths, environment: {}, serviceProbe, ...runtimePaths };
+  const configWriter = async () => {
+    const current = await fs.readFile(configPath, "utf8");
+    if (current.includes('[plugins."chrome-dev@codex-chrome-automation-local".mcp_servers.boss_repl.tools.js]')) {
+      return { changed: false, configPath };
+    }
+    await fs.writeFile(configPath, `${current}\n[plugins."chrome-dev@codex-chrome-automation-local".mcp_servers.boss_repl.tools.js]\napproval_mode = "approve"\n`);
+    return { changed: true, configPath };
+  };
+  const input = { codexHome, versionRoot, resourcesPath, homeDirectory: root, runtimePaths, environment: {}, serviceProbe, configWriter, ...runtimePaths };
   return { root, input, clientPath, configPath, config };
 }
 
@@ -43,6 +51,8 @@ test("private expected fingerprint is comparison only; explicit value wins and u
   const a = await inspectPluginTrust(f.input);
   assert.equal(a.ready, true);
   assert.equal(a.effectiveTrust, "isolated-service-authorized");
+  assert.equal(a.mcpApproval.configured, false);
+  assert.ok(a.warnings.some((x) => x.code === "MCP_TOOL_APPROVAL_REQUIRED"));
   const b = await inspectPluginTrust({ ...f.input, environment: { BOSS_PLUGIN_EXPECTED_BROWSER_CLIENT_SHA256: "0".repeat(64) } });
   assert.ok(b.issues.some((x) => x.code === "FINGERPRINT_MISMATCH"));
   const c = await inspectPluginTrust({ ...f.input, expectedBrowserClientSha256: a.fingerprint, environment: { BOSS_PLUGIN_EXPECTED_BROWSER_CLIENT_SHA256: "invalid" } });
@@ -64,6 +74,27 @@ test("missing, disabled, invalid TOML and redirected identity fail with distinct
   await fs.rename(f.input.versionRoot, outside);
   await fs.symlink(outside, f.input.versionRoot);
   assert.equal((await inspectPluginTrust(f.input)).issues[0].code, "CONFIG_CONFLICT");
+});
+
+test("boss_repl remains callable from Codex code mode", async (t) => {
+  const f = await fixture(t);
+  const mcpPath = path.join(f.input.versionRoot, ".mcp.json");
+  const mcp = JSON.parse(await fs.readFile(mcpPath, "utf8"));
+  mcp.mcpServers.boss_repl.omit_tools_from = ["code_mode"];
+  await fs.writeFile(mcpPath, JSON.stringify(mcp));
+  const report = await inspectPluginTrust(f.input);
+  assert.equal(report.ready, false);
+  assert.ok(report.issues.some((issue) => issue.code === "CONFIG_CONFLICT"));
+});
+
+test("explicit boss_repl MCP denials are conflicts and are not replaced", async (t) => {
+  const f = await fixture(t);
+  await fs.appendFile(f.configPath, `\n[plugins."${selector}".mcp_servers.boss_repl.tools.js]\napproval_mode = "prompt"\n`);
+  const report = await inspectPluginTrust(f.input);
+  assert.equal(report.ready, false);
+  assert.ok(report.issues.some((issue) => issue.code === "MCP_TOOL_APPROVAL_CONFLICT"));
+  await assert.rejects(reconcileManualInstall(await resolveManualInstallPlan(f.input)), /MCP_TOOL_APPROVAL_CONFLICT/);
+  assert.equal(await fs.readFile(f.configPath, "utf8"), `${f.config}\n[plugins."${selector}".mcp_servers.boss_repl.tools.js]\napproval_mode = "prompt"\n`);
 });
 
 test("legacy host variables are diagnostic only for the authorized isolated service", async (t) => {
@@ -110,14 +141,20 @@ test("first registration, idempotence, unrelated entry preservation and guarded 
   assert.equal(plan.ready, true);
   const first = await reconcileManualInstall(plan);
   assert.equal(first.connectionVerified, false);
+  const configured = await fs.readFile(f.configPath, "utf8");
+  const parsedConfig = Bun.TOML.parse(configured);
+  assert.equal(parsedConfig.plugins[selector].mcp_servers.boss_repl.tools.js.approval_mode, "approve");
+  assert.equal(parsedConfig.plugins["official@official"].enabled, true);
   const registered = await fs.readFile(registry, "utf8");
   assert.equal(JSON.parse(registered).entries.find((x) => x.entryId === "official").nativeHostNames[0], "com.openai.codexextension");
   const second = await reconcileManualInstall(plan);
   assert.equal(await fs.readFile(registry, "utf8"), registered);
+  assert.equal(await fs.readFile(f.configPath, "utf8"), configured);
   await fs.writeFile(registry, registered + " ");
   await assert.rejects(rollbackNativeHostBackup(second.backupPath), /changed after initialization/);
   await fs.writeFile(registry, registered);
   await rollbackNativeHostBackup(second.backupPath);
+  assert.equal(await fs.readFile(f.configPath, "utf8"), configured);
   await rollbackNativeHostBackup(first.backupPath);
   await rollbackNativeHostBackup(first.backupPath);
   assert.equal(await fs.readFile(registry, "utf8"), original);

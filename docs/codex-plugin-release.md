@@ -2,7 +2,7 @@
 
 发布日期：2026-09-07
 
-插件版本：`26.707.30751-standalone.7`
+插件版本：`26.707.30751-standalone.8`
 
 Chrome 扩展版本：`1.1.5.2`
 
@@ -17,6 +17,9 @@ Chrome 扩展版本：`1.1.5.2`
 - Browser Client 和源码 Chrome Extension 支持可取消的浏览器操作。DOM snapshot 超时、调用方取消、JavaScript Dialog、标签关闭或浏览器断连时，会清理 pending request 并返回结构化取消原因。
 - 个人插件不再依赖旧的 `NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S` 共享 allowlist。插件自带 `boss_repl` MCP，并在其子进程中注册独立的 `boss_browser` trusted service。
 - Native Host 用户级注册增加只读 preflight、写入前复核、备份、幂等更新和冲突保护；不会覆盖官方 Host `com.openai.codexextension`、其他插件 registry entry 或企业策略。
+- 初始化器通过 Codex App Server 只授权个人插件的 `boss_repl.js` 工具；用户层版本条件、快照和显式策略冲突检查避免覆盖其他配置。
+- 发布组装会排除 AppleDouble 和 `.DS_Store`，打包后会拒绝 macOS 元数据与不安全路径；Rust 重建 Host 会把工作区、Cargo 和用户主目录重映射为稳定路径。
+- `boss_repl` 不再从 Codex Code Mode 工具目录中排除；技能从实际 `SKILL.md` 路径解析插件根目录，避免升级后继续引用已删除的版本目录。
 
 | 对象 | 值 |
 | --- | --- |
@@ -37,13 +40,13 @@ Chrome 扩展版本：`1.1.5.2`
 
 | 档位 | Chrome Extension 来源 | Native Host 来源 | 用途 | 2026-09-07 SHA-256 |
 | --- | --- | --- | --- | --- |
-| `baseline` | `baselines/chrome-extension` | `baselines/native-host/macos/arm64/extension-host` | 推荐安装和签名基线回归 | `e0623064ac8eaf32a9e7bb4a74b03a86d8eeb5d0e262ba04f3f784c061f56611` |
-| `extension-dev` | `dist/chrome-extension`，由 TypeScript/React 源码构建 | 签名基线 Host | 验证本版本 Dialog/取消协议和扩展改动 | `f1c860e11bb845a7389509cc06a4dd1e8bb9382f6e3a28451e0f0c9834bebfc1` |
-| `full-reconstructed` | `dist/chrome-extension` | `dist/native-host/macos/arm64/extension-host`，由 Rust 源码构建 | 协议研究和源码重建验证 | `7c697e60a0b8fe47624b4066c4efcae6f70c8f1467094e48dc5790e39f8d41f8` |
+| `baseline` | `baselines/chrome-extension` | `baselines/native-host/macos/arm64/extension-host` | 推荐安装和签名基线回归 | `d13aadb8fd1257f325d3b1570939ebe0ec0f147e6b8c823a0ef71f2abd7c208a` |
+| `extension-dev` | `dist/chrome-extension`，由 TypeScript/React 源码构建 | 签名基线 Host | 验证本版本 Dialog/取消协议和扩展改动 | `8a69270fa7a81e5d52da77c1e23375b0e95d3416f9bbce2f22364f428f6fd0d1` |
+| `full-reconstructed` | `dist/chrome-extension` | `dist/native-host/macos/arm64/extension-host`，由 Rust 源码构建 | 协议研究和源码重建验证 | `831040d89e4ac2ad9b084c0880f96ca1461279214356849d2ea8f164499d9cea` |
 
 表中摘要对应本次最终打包的具体文件。当前归档脚本会保留构建物元数据，重新构建可能产生新的归档摘要；交付时应以同批次生成的 `.sha256` sidecar 为准，不能把表中值当作版本的永久身份。
 
-`baseline` Host 文件 SHA-256 是 `7092676b829e09bab4fac2b4ca037b38e6640b6cdce2d63d6d858ef58c90f89f`，签名 Team ID 为 `2DC432GLL2`。`full-reconstructed` Host 文件 SHA-256 是 `937ef88d55891ef156b64999fc16d3a3036468872f12a70bd8493e0d447f9491`，只有 ad-hoc 签名，因此不建议生产使用。
+`baseline` Host 文件 SHA-256 是 `7092676b829e09bab4fac2b4ca037b38e6640b6cdce2d63d6d858ef58c90f89f`，签名 Team ID 为 `2DC432GLL2`。`full-reconstructed` Host 文件 SHA-256 是 `800183c7b4a187bfc9644876361f4a13d44cdffa316b7dae0200488fad862ac5`，只有 ad-hoc 签名，因此不建议生产使用。
 
 每个归档包含：
 
@@ -63,13 +66,13 @@ electron-app/    Electron Main 生命周期模块与手动 reconcile/rollback CL
 | Rust 重建 Host | `components/native-host/` | `dist/native-host/macos/arm64/extension-host` |
 | 签名基线 Host | `baselines/native-host/macos/arm64/extension-host` | 原样进入 `baseline` 和 `extension-dev` |
 
-`components/codex-plugin/scripts-bak/` 是不可变恢复基线，不是当前权威源码。发布组装会排除插件的 `scripts-bak/`、`src/` 和 `test/`；安装包只保留运行时脚本、必要依赖、扩展、Host、技能、配置和用户文档，不公开开发依赖、测试夹具或恢复基线。当前不可变基线摘要是 `85d1bc4f7d456ef75eceab7df6159ebfdfce23de0af51175ec9ba2dc9e579964`（344 个文件）。
+`components/codex-plugin/scripts-bak/` 保存原始恢复基线和本轮生成物修改前的唯一快照，不是当前权威源码。发布组装会排除插件的 `scripts-bak/`、`src/` 和 `test/`；安装包只保留运行时脚本、必要依赖、扩展、Host、技能、配置和用户文档，不公开开发依赖、测试夹具或恢复基线。当前清单摘要是 `d5537ab072c6cfd1a64d69aec27a3a76dd7b6a0f30eb9925d4d1e42f8b1cdd38`（345 个文件）。
 
 当前个人运行时文件摘要：
 
 ```text
-browser-client.mjs          d3a46310e170cd04943dc1a2c91b46adfdb1d099d473066235ba04123df0626f
-browser-service.mjs         051a35acf9253f847d1814fcb1c393fbd8c1e26468d83b94fe532395d6efd805
+browser-client.mjs          67abc484942685467774857a3bcc228ba9c97e040efa7eae88923d01471afe3a
+browser-service.mjs         114346d861435122511479f30477a8af7df0253d8f988e9f9191a6272d049c84
 launch-browser-service.mjs  0c6a9d6ed3072a489e068b7279a4427bcc87a19a54d7474ae380bbc286fd56ca
 ```
 
@@ -145,6 +148,8 @@ bun components/electron-app/bin/reconcile-native-host.mjs --json
 
 确认名称为 `Boss投递`、扩展 ID 与本文一致。安装或升级插件后完整退出并重新启动 ChatGPT/Codex Desktop，使新 `.mcp.json` 和 `boss_repl` 被新任务加载。本文中的命令不会自动关闭 Desktop 或 Chrome。
 
+如果新任务仍引用旧版本目录，或只读取到技能却看不到 `mcp__boss_repl__js`，Desktop 仍在使用安装前的插件快照。此时 `codex mcp list --json` 中出现 `boss_repl` 只能证明磁盘配置可解析；必须完整重启 Desktop 并创建新任务，才能验证工具目录已经刷新。
+
 若要验收本版本的对话取消扩展代码，应改为构建和安装 `extension-dev`，并在 `chrome://extensions/` 重新加载对应目录。`baseline` 不包含这部分源码扩展改动。
 
 ## 5. 升级
@@ -178,14 +183,14 @@ preflight 会重新计算已安装 `browser-client.mjs` 的摘要。设置预期
 
 ```bash
 BOSS_PLUGIN_EXPECTED_BROWSER_CLIENT_SHA256=\
-d3a46310e170cd04943dc1a2c91b46adfdb1d099d473066235ba04123df0626f \
+67abc484942685467774857a3bcc228ba9c97e040efa7eae88923d01471afe3a \
   bun components/electron-app/bin/reconcile-native-host.mjs --dry-run --json
 
 CODEX_HOME=/absolute/personal-codex \
   bun components/electron-app/bin/reconcile-native-host.mjs --dry-run --json
 ```
 
-`NODE_REPL_TRUSTED_SERVICES` 由 launcher 为自己的子进程生成，只注册 `boss_browser`，无需用户配置。`NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S` 仅作为旧版共享 allowlist 的诊断来源；个人 launcher 会删除继承值，它不是本版本初始化变量。不得把预期摘要映射进旧变量，也不得用变量覆盖企业策略。
+`NODE_REPL_TRUSTED_SERVICES` 由 launcher 为自己的子进程生成，只注册 `boss_browser`，无需用户配置。`NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S` 仅作为旧版共享 allowlist 的诊断来源；个人 launcher 会删除继承值，它不是本版本初始化变量。初始化器只持久化 `plugins."chrome-dev@codex-chrome-automation-local".mcp_servers.boss_repl.tools.js.approval_mode = "approve"`，并拒绝覆盖显式用户拒绝或企业策略。
 
 ## 7. 使用方法
 
@@ -252,15 +257,17 @@ CODEX_DATA_DIR="${CODEX_HOME:-$HOME/.codex}"
 
 - Browser Client 构建、类型检查和 33 项单元测试通过；client → `boss_browser` → service roundtrip 通过。
 - 当前 Desktop `node_repl` 的动态授权 ping 通过，`nativePipeAvailable=true`；受限 PATH `/usr/bin:/bin` 配合 bundled Node 的探针也通过。
-- Electron 测试 16/16 通过；临时 `CODEX_HOME` 的首次、重复初始化、配置保留和快照回滚通过。
-- Chrome Extension 类型检查、构建和 10 项取消/重连测试通过；Rust Native Host 测试 10/10 通过。
+- Electron 测试 18/18 通过；临时 `CODEX_HOME` 的首次、重复初始化、个人工具授权、配置保留和快照回滚通过。
+- Chrome Extension 类型检查、构建通过；打包验证运行的插件测试为 16/16，Rust Native Host 测试 10/10 通过。
 - 三个档位均通过 `make verify` 并成功生成可读取归档。
+- 三个归档均通过公开发布审计：不包含 AppleDouble、`.DS_Store`、不安全路径或本机构建绝对路径。
+- `boss_repl` 可在新任务中发现，并通过专用服务完成真实 Chrome 标签页只读检查。
 
 仍需在目标机器验收：
 
-- 完整重启 Desktop 后，新任务是否发现 `boss_repl`。
-- 真实 Chrome 标签页只读操作和本版本 Dialog/取消回归；当前发布过程没有伪造 Desktop `session_id/turn_id` 绕过来源校验。
+- 当前已运行的 Desktop GUI 完整重启后是否立即刷新 `boss_repl` 工具目录。
+- 本版本 Dialog/取消在真实 Chrome 页面上的回归；发布验收只执行了 `tabs.list()`，没有导航或表单操作。
 - 企业策略存在时的最终允许/拒绝结果，应由宿主和管理员策略决定。
 - Windows HKCU Native Host 完整回滚尚未验证。
 
-因此，本版本已经证明个人服务授权、用户级 Host 注册和离线构建完整性；在完成 Desktop 重启后的真实只读操作前，不应宣称 Chrome 连接已经恢复。
+新启动的临时 Codex 任务已经通过个人服务列出真实 Chrome 标签页，因此 Chrome 连接已在该任务中确认；当前 Desktop GUI 的安装后完整重启仍由用户执行。

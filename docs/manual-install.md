@@ -297,7 +297,7 @@ test -x "$CODEX_CLI_BIN"
 
 ```text
 pluginId: chrome-dev@codex-chrome-automation-local
-version: 26.707.30751-standalone.7
+version: 26.707.30751-standalone.8
 ```
 
 Codex CLI 负责安装插件并更新启用记录，不负责本项目的 Native Host 注册。若正在运行的 Electron 宿主尚未接入本项目的 `onDidInstall` lifecycle，还需要执行下一步。
@@ -422,10 +422,16 @@ bun "$BOSS_WORKSPACE/components/electron-app/bin/reconcile-native-host.mjs" \
   --json
 ```
 
-如插件 cache 中存在多个版本，可使用：
+如插件 cache 中存在多个版本，先解析当前 `latest`，不要把版本号写死在脚本或任务中：
 
 ```bash
---version-root "/Users/dmeck/.codex/plugins/cache/codex-chrome-automation-local/chrome-dev/26.707.30751-standalone.7"
+CODEX_DATA_DIR="${CODEX_HOME:-$HOME/.codex}"
+PLUGIN_VERSION_ROOT="$(readlink "$CODEX_DATA_DIR/plugins/cache/codex-chrome-automation-local/chrome-dev/latest")"
+
+bun "$BOSS_WORKSPACE/components/electron-app/bin/reconcile-native-host.mjs" \
+  --version-root "$PLUGIN_VERSION_ROOT" \
+  --dry-run \
+  --json
 ```
 
 ## 六、分层验证
@@ -459,6 +465,8 @@ jq '[.entries[] | select(.nativeHostNames[]? == "com.openai.codexextension.dev")
 | `browser-action-verified` | Desktop 重新加载插件后的 `boss_repl` 新会话通过 Boss投递完成一次轻量页面读取 |
 
 `manifest-valid` 和 `service-authorized` 都不等于 Chrome 端已经连接。最终验证应在 Desktop 重新加载插件后的 `boss_repl` 会话中加载 Boss投递 Browser Client，执行一次简单的标签页读取；如果返回 `Browser is not available: extension`，按 Native Host/扩展链路排查，不把其他浏览器机制的结果当成成功。
+
+如果新任务仍引用已经删除的插件版本目录，或工具清单没有 `mcp__boss_repl__js`，说明 Desktop 仍在使用安装前的插件快照。完整退出并重新启动 Desktop，再创建新任务；仅安装新版本或在旧任务中重试不会刷新该快照。`codex mcp list --json` 能看到 `boss_repl` 只证明磁盘配置已被 CLI 解析，不能代替新任务的工具发现验收。
 
 ## 七、更新插件
 
@@ -538,14 +546,14 @@ BOSS_PLUGIN_EXPECTED_BROWSER_CLIENT_SHA256="<受审查产物的64位SHA-256>" \
 bun components/electron-app/bin/reconcile-native-host.mjs --codex-home /absolute/personal-codex --dry-run --json
 ```
 
-命令逐项报告 `PLUGIN_NOT_INSTALLED`、`PLUGIN_DISABLED`、`PLUGIN_UNTRUSTED`、`FINGERPRINT_MISMATCH`、`USER_CONFIG_ERROR`、`INVALID_ENVIRONMENT`、`CONFIG_CONFLICT`、`POLICY_REVIEW_REQUIRED`、`RUNTIME_INCOMPATIBLE` 或 `RUNTIME_UNVERIFIED`。只有动态 ping 同时验证服务名、随机 nonce、协议版本和 `nativePipe=true` 时，`effectiveTrust` 才为 `isolated-service-authorized`。托管配置存在时交由宿主确认。
+命令逐项报告 `PLUGIN_NOT_INSTALLED`、`PLUGIN_DISABLED`、`MCP_TOOL_APPROVAL_REQUIRED`、`MCP_TOOL_APPROVAL_CONFLICT`、`MCP_TOOL_DISABLED`、`MCP_SERVER_DISABLED`、`PLUGIN_UNTRUSTED`、`FINGERPRINT_MISMATCH`、`USER_CONFIG_ERROR`、`INVALID_ENVIRONMENT`、`CONFIG_CONFLICT`、`POLICY_REVIEW_REQUIRED`、`POLICY_REJECTED`、`RUNTIME_INCOMPATIBLE` 或 `RUNTIME_UNVERIFIED`。只有动态 ping 同时验证服务名、随机 nonce、协议版本和 `nativePipe=true` 时，`effectiveTrust` 才为 `isolated-service-authorized`。托管配置存在时交由宿主确认。
 
-通过前置检查后，注册会先备份 Native Host 目标至所选 CODEX_HOME/backups/personal-plugin-native-host-*/snapshot.json，再调用原注册器。返回 `nativeHostRegistered` 和 `connectionVerified=false`，不再用笼统的 correct 表示整体就绪。同一次初始化成功后的回滚命令：
+通过前置检查后，初始化器先把 `config.toml` 与 Native Host 目标备份至所选 `CODEX_HOME/backups/personal-plugin-native-host-*/snapshot.json`。若个人工具尚未授权，它使用 Codex App Server 的 `config/read` 和带 `expectedVersion` 的 `config/batchWrite`，只 upsert `plugins."chrome-dev@codex-chrome-automation-local".mcp_servers.boss_repl.tools.js.approval_mode = "approve"`，随后注册 Host。其他配置和历史 SHA 变量保持不变；显式非 `approve`、server/tool 禁用和企业覆盖不会被替换。返回 `nativeHostRegistered` 和 `connectionVerified=false`。
 
 ```bash
 bun components/electron-app/bin/rollback-native-host.mjs /absolute/path/to/snapshot.json
 ```
 
-回滚前检查文件是否在初始化后被其他进程修改，冲突时拒绝覆盖。注册失败保留原始快照供人工恢复，不自动回滚并发写入。config.toml 始终只读，因此不存在需要恢复的信任配置修改。直接 Electron 生命周期 API 仍仅注册 Native Host；它不是信任安装器，也不代表 Browser Client 连接已验收。
+回滚前检查所有目标是否在初始化后被其他进程修改，冲突时拒绝覆盖。初始化失败也会密封快照，供人工恢复本轮 `config.toml` 和 Host 目标。直接 Electron 生命周期 API 仍仅注册 Native Host；完整的个人授权流程应使用 reconcile CLI。
 
-设计、证据与完整限制见 [personal-plugin-trust-design.md](personal-plugin-trust-design.md)。动态服务授权已验证；安装后需重新加载 Desktop 插件再完成真实 Chrome 只读验收。
+设计、证据与完整限制见 [personal-plugin-trust-design.md](personal-plugin-trust-design.md)。新启动的临时 Codex 任务已发现 `boss_repl` 并完成真实 Chrome 标签页只读调用；当前 Desktop GUI 仍需完整重启后确认工具目录刷新。

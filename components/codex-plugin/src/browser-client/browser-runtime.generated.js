@@ -35040,11 +35040,12 @@ function mp(t, e, r) {
   (r.browserId != null && (n.browserId = r.browserId),
     r.openTabIds != null && (n.openTabIds = r.openTabIds),
     r.sessionEnded != null && (n.sessionEnded = r.sessionEnded),
-    r.screenshot != null && (n.screenshot = r.screenshot),
-    t.nodeRepl?.setResponseMeta({
+    r.screenshot != null && (n.screenshot = r.screenshot));
+  if (typeof t.nodeRepl?.setResponseMeta == "function")
+    t.nodeRepl.setResponseMeta({
       [LP]: !0,
       ...hp({ backend: e, currentUrl: r.currentUrl, params: r.params ?? {}, surfaceDetails: n }),
-    }));
+    });
 }
 async function jP({
   backend: t,
@@ -35056,7 +35057,7 @@ async function jP({
   params: s,
   result: a,
 }) {
-  if (i.nodeRepl?.setResponseMeta == null) return;
+  if (typeof i.nodeRepl?.setResponseMeta != "function") return;
   let u = { browserId: n.browserId };
   if (e && r === "finalize_tabs") {
     ((u.openTabIds = []), (u.sessionEnded = !0), mp(i, t, { ...u, currentUrl: o, params: s }));
@@ -35390,7 +35391,8 @@ async function DG(t, e, r, n) {
   try {
     o = await KP(r, n, { readCurrentUrl: !0 });
   } catch {}
-  t.nodeRepl?.setResponseMeta(UP({ backend: e, browserId: r.browserId, currentUrl: o }));
+  if (typeof t.nodeRepl?.setResponseMeta == "function")
+    t.nodeRepl.setResponseMeta(UP({ backend: e, browserId: r.browserId, currentUrl: o }));
 }
 async function ATe({
   elicitationDisplayName: t,
@@ -35439,7 +35441,8 @@ async function ATe({
       createBrowser: d.createBrowser,
       documentation: new fn(Rb),
       onBrowserUsed: ({ type: f }) => {
-        e.nodeRepl?.setResponseMeta(hp({ backend: xr(f), params: {} }));
+        if (typeof e.nodeRepl?.setResponseMeta == "function")
+          e.nodeRepl.setResponseMeta(hp({ backend: xr(f), params: {} }));
       },
       transport: new pi(
         (__bossTransport = {

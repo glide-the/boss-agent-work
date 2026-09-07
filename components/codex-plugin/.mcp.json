@@ -6,7 +6,6 @@
       "cwd": ".",
       "enabled": true,
       "enabled_tools": ["js", "js_reset"],
-      "omit_tools_from": ["code_mode"],
       "startup_timeout_sec": 120,
       "tools": {
         "js": {

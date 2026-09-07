@@ -1,13 +1,13 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "observedAt": "2026-09-07",
-  "branch": "codex/chrome-dialog-cancellation",
+  "branch": "codex/release-package-hygiene",
   "identity": {
     "marketplace": "codex-chrome-automation-local",
     "plugin": "chrome-dev",
     "selector": "chrome-dev@codex-chrome-automation-local",
     "versionBefore": "26.707.30751-standalone.4",
-    "versionInstalled": "26.707.30751-standalone.7",
+    "versionInstalled": "26.707.30751-standalone.8",
     "scope": "user",
     "extensionId": "jigmpnbdhhempldjgegphdgkochgpagi",
     "nativeHostName": "com.openai.codexextension.dev",
@@ -16,12 +16,12 @@
   },
   "fingerprints": {
     "legacyVersionBrowserClientSha256": "9599a8a2520d1e064e3965e4cbf82240f3179cf935ab355dca3f96429c52e6e6",
-    "installedBrowserClientSha256": "d3a46310e170cd04943dc1a2c91b46adfdb1d099d473066235ba04123df0626f",
-    "installedBrowserServiceSha256": "051a35acf9253f847d1814fcb1c393fbd8c1e26468d83b94fe532395d6efd805",
+    "installedBrowserClientSha256": "67abc484942685467774857a3bcc228ba9c97e040efa7eae88923d01471afe3a",
+    "installedBrowserServiceSha256": "114346d861435122511479f30477a8af7df0253d8f988e9f9191a6272d049c84",
     "installedLauncherSha256": "0c6a9d6ed3072a489e068b7279a4427bcc87a19a54d7474ae380bbc286fd56ca",
     "immutableScriptsBackup": {
-      "fileCount": 344,
-      "sha256": "85d1bc4f7d456ef75eceab7df6159ebfdfce23de0af51175ec9ba2dc9e579964"
+      "fileCount": 345,
+      "sha256": "d5537ab072c6cfd1a64d69aec27a3a76dd7b6a0f30eb9925d4d1e42f8b1cdd38"
     }
   },
   "legacyTrust": {
@@ -68,32 +68,33 @@
   "actualInstall": {
     "installed": true,
     "enabled": true,
-    "versionRoot": "/Users/dmeck/.codex/plugins/cache/codex-chrome-automation-local/chrome-dev/26.707.30751-standalone.7",
+    "versionRoot": "/Users/dmeck/.codex/plugins/cache/codex-chrome-automation-local/chrome-dev/26.707.30751-standalone.8",
     "latestPointsToVersion": true,
     "marketplaceAlreadyAdded": true,
     "preflightReady": true,
     "effectiveTrust": "isolated-service-authorized",
-    "firstInitializationAction": "replace-symlink",
-    "secondInitializationAction": "no-op",
+    "latestInitializationAction": "create-link",
     "nativeHostRegistered": true,
     "connectionVerified": false,
     "applicationSupportRegistryEntryCount": 25,
     "unrelatedApplicationSupportEntriesPreserved": 24
   },
   "backups": {
-    "configBefore": "/Users/dmeck/.codex/backups/personal-plugin-install-20260907-standalone-5/config.toml.before",
-    "firstNativeHostSnapshot": "/Users/dmeck/.codex/backups/personal-plugin-native-host-b3ebc709-11f7-4045-b672-cdfab011351a/snapshot.json",
-    "secondNativeHostSnapshot": "/Users/dmeck/.codex/backups/personal-plugin-native-host-b46a68bd-4ddc-42b0-8388-082ee1a94ded/snapshot.json"
+    "configBeforeApproval": "/Users/dmeck/.codex/backups/personal-plugin-mcp-approval-b55ba13c-a3fb-47e5-a48d-909dd0c82ddd/config.toml.before",
+    "latestNativeHostSnapshot": "/Users/dmeck/.codex/backups/personal-plugin-native-host-98627cb2-e1a0-4737-af1f-487553c2637e/snapshot.json"
   },
   "configChanges": {
     "pluginInstallerRemovedMarketplaceLastUpdated": true,
     "desktopAddedUnrelatedProjectTrustConcurrently": true,
     "legacyTrustVariableChanged": false,
-    "otherRecordsPreserved": true
+    "otherRecordsPreserved": true,
+    "personalMcpApprovalKey": "plugins.\"chrome-dev@codex-chrome-automation-local\".mcp_servers.boss_repl.tools.js.approval_mode",
+    "personalMcpApprovalValue": "approve",
+    "writeProtocol": "Codex App Server config/read + config/batchWrite with expectedVersion"
   },
   "tests": {
     "browserClientUnitTests": { "passed": 33, "failed": 0 },
-    "electronTests": { "passed": 16, "failed": 0 },
+    "electronTests": { "passed": 18, "failed": 0 },
     "nativeHostTests": { "passed": 10, "failed": 0 },
     "canonicalArtifactCount": 15,
     "runtimeRoundtrip": "pass-via-isolated-boss-browser-service",
@@ -101,12 +102,14 @@
     "actualUserInitialization": "pass-and-idempotent",
     "marketplaceProfiles": ["baseline", "extension-dev", "full-reconstructed"],
     "package": "pass",
-    "desktopReload": "unverified",
-    "liveChromeTabs": "unverified"
+    "desktopGuiReload": "unverified",
+    "freshTaskId": "01a07a86-c1a4-7a53-8dbe-e9a161f175c9",
+    "bossReplToolDiscovery": "pass",
+    "liveChromeTabs": { "status": "pass", "backend": "chrome", "tabCount": 0, "operation": "browser.tabs.list" }
   },
   "packages": {
-    "boss-delivery-baseline.tar.gz": "e0623064ac8eaf32a9e7bb4a74b03a86d8eeb5d0e262ba04f3f784c061f56611",
-    "boss-delivery-extension-dev.tar.gz": "f1c860e11bb845a7389509cc06a4dd1e8bb9382f6e3a28451e0f0c9834bebfc1",
-    "boss-delivery-full-reconstructed.tar.gz": "7c697e60a0b8fe47624b4066c4efcae6f70c8f1467094e48dc5790e39f8d41f8"
+    "boss-delivery-baseline.tar.gz": "d13aadb8fd1257f325d3b1570939ebe0ec0f147e6b8c823a0ef71f2abd7c208a",
+    "boss-delivery-extension-dev.tar.gz": "8a69270fa7a81e5d52da77c1e23375b0e95d3416f9bbce2f22364f428f6fd0d1",
+    "boss-delivery-full-reconstructed.tar.gz": "831040d89e4ac2ad9b084c0880f96ca1461279214356849d2ea8f164499d9cea"
   }
 }

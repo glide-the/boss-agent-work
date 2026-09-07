@@ -1,9 +1,12 @@
 {
   "path": "components/codex-plugin/scripts-bak",
   "createdBeforeScriptsMutation": true,
-  "fileCount": 344,
+  "fileCount": 345,
   "treeHashAlgorithm": "sha256(relative-path + NUL + file-bytes + NUL, sorted by relative path)",
-  "treeSha256": "85d1bc4f7d456ef75eceab7df6159ebfdfce23de0af51175ec9ba2dc9e579964",
+  "treeSha256": "d5537ab072c6cfd1a64d69aec27a3a76dd7b6a0f30eb9925d4d1e42f8b1cdd38",
+  "additionalSnapshots": {
+    "snapshots/standalone.8-response-meta-compat/browser-client.mjs": "d3a46310e170cd04943dc1a2c91b46adfdb1d099d473066235ba04123df0626f"
+  },
   "topLevelFiles": {
     "browser-client.mjs": "cf71c5bf138839ff6f6df07328a63d6897458f122ed68ee0bf496e301cc06c45",
     "check-extension-installed.js": "1b9cd79960ee1bd1c13a510e1fcc6393563c809c35e4e5be84fe7c55849fad39",

@@ -35,6 +35,12 @@ done
 for profile in baseline extension-dev full-reconstructed; do
   marketplace="$WORKSPACE_ROOT/dist/$profile/marketplace"
   if [[ -d "$marketplace" ]]; then
+    metadata_entry="$(find "$marketplace" "$WORKSPACE_ROOT/dist/$profile/electron-app" \
+      \( -name '.DS_Store' -o -name '._*' \) -print -quit)"
+    if [[ -n "$metadata_entry" ]]; then
+      echo "Unexpected macOS metadata in assembled output: $metadata_entry" >&2
+      exit 4
+    fi
     "$PYTHON" "$WORKSPACE_ROOT/scripts/validate_plugin.py" "$marketplace/plugins/chrome-dev"
     node "$marketplace/plugins/chrome-dev/scripts/patch-browser-client-site-status.mjs" \
       --check "$marketplace/plugins/chrome-dev/scripts/browser-client.mjs"
@@ -54,6 +60,14 @@ for profile in baseline extension-dev full-reconstructed; do
     [[ "$built_id" == "$EXPECTED_ID" ]]
   fi
 done
+
+RECONSTRUCTED_HOST="$WORKSPACE_ROOT/dist/full-reconstructed/marketplace/plugins/chrome-dev/extension-host/macos/arm64/extension-host"
+if [[ -f "$RECONSTRUCTED_HOST" ]]; then
+  if rg -a -qF "$WORKSPACE_ROOT" "$RECONSTRUCTED_HOST" || rg -a -qF "$HOME/" "$RECONSTRUCTED_HOST"; then
+    echo "Reconstructed Native Host contains a local build path" >&2
+    exit 4
+  fi
+fi
 
 test -f "$WORKSPACE_ROOT/dist/electron-app/src/boss-plugin-native-host-lifecycle.mjs"
 test -f "$WORKSPACE_ROOT/dist/electron-app/bin/reconcile-native-host.mjs"
