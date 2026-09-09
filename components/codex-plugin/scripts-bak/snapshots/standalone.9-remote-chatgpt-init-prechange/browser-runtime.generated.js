@@ -28019,12 +28019,114 @@ function Dq(t) {
 function Pu() {
   return pu(SE);
 }
-// The personal plugin does not initialize upstream telemetry, experiments, or
-// ChatGPT identity. Browser trust and transport setup are local and independent.
-var sk = () => {},
-  rb = () => {},
-  nb = async () => {},
-  Ve = () => {};
+var ki = async (t, e) => {
+  let r = Re()?.fetch;
+  if (r == null) throw new Error("browser-client privileged fetch is unavailable");
+  return r(t, e);
+};
+var aR = !1,
+  uR = () => {
+    if (aR) return;
+    Pf({
+      dsn: "https://946e373d0393408ec734c0156b0aeec6@o33249.ingest.us.sentry.io/4511236780326912",
+      sendDefaultPii: !1,
+      environment: mi(),
+      release: "26.707.30751",
+      transport: (e) =>
+        lr(e, (r) => {
+          let n = {
+            body: r.body,
+            method: "POST",
+            referrerPolicy: "origin",
+            headers: e.headers,
+            keepalive: e.keepAlive,
+          };
+          return ki(e.url, n).then((o) => ({
+            statusCode: o.status,
+            headers: {
+              "x-sentry-rate-limits": o.headers.get("X-Sentry-Rate-Limits"),
+              "retry-after": o.headers.get("Retry-After"),
+            },
+          }));
+        }),
+    });
+    let t = ol();
+    (t != null && yo({ id: t }), (aR = !0));
+  },
+  cR = (t) => {
+    vs("backend", t);
+  },
+  lR = (t) => {
+    yo({ email: t.email, id: t.id });
+  };
+var QA = Db(ZA(), 1);
+import { platform as o7 } from "os";
+var i7 = "client-sYWqzCYMRkUg4DqqiZcR5DGTNl2iD7zNJY0HoeDLzxR",
+  ek = jE(),
+  s7 = ek ?? Sn,
+  a7 = mi(),
+  Nt = {
+    appVersion: "26.707.30751",
+    userID: ol(),
+    custom: { platform: o7(), codexAppVersion: s7 },
+  },
+  eb = new QA.StatsigClient(i7, Nt, {
+    environment: { tier: a7 },
+    networkConfig: {
+      api: "https://ab.chatgpt.com/v1",
+      sdkExceptionUrl: "https://ab.chatgpt.com/v1/sdk_exception",
+      networkOverrideFunc: ki,
+    },
+    loggingEnabled: "always",
+  }),
+  XA = !1,
+  tk = async () => {
+    if (!XA)
+      try {
+        (await eb.initializeAsync(), (XA = !0));
+      } catch (t) {
+        (console.warn(t), ae(t));
+      }
+  },
+  zd = (t, e, r) => eb.logEvent(t, e, { ...r, codexAppVersion: ek ?? "unknown" }),
+  rk = (t) => {
+    Nt.custom?.backend !== t && ((Nt = { ...Nt, custom: { ...Nt.custom, backend: t } }), ok());
+  },
+  nk = ({ email: t, id: e }) => {
+    (Nt.userID === e && Nt.email === t) || ((Nt = { ...Nt, email: t, userID: e }), ok());
+  },
+  ok = () => {
+    eb.updateUserSync(Nt, { disableBackgroundCacheRefresh: !0 });
+  };
+var tb = null,
+  ik = async () => {
+    if (tb) return tb;
+    let e = await (await ki("https://chatgpt.com/backend-api/aura/identity")).json();
+    if (!("object" in e) || e.object !== "user") throw new Error("User unavailable");
+    return ((tb = e), e);
+  };
+var u7 = "codex_",
+  sk = () => {
+    Pu() || (uR(), Xe() === "gaas-browser-environment" && rb("cdp"), tk(), nb());
+  },
+  rb = (t) => {
+    Pu() || (cR(t), rk(t));
+  },
+  nb = async () => {
+    if (!Pu())
+      try {
+        let t = await ik();
+        (lR(t), nk(t));
+      } catch (t) {
+        ae(t);
+      }
+  };
+function c7(t) {
+  return `${u7}${t}`;
+}
+var Ve = (t, e, r) => {
+  if (!Pu()) return zd(c7(t), e, r);
+};
 var l7 = "unknown",
   ak = y(hn.Report, async (t, e) => {
     let r = hn.Report.PayloadSchema.parse(t),

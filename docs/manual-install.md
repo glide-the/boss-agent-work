@@ -297,7 +297,7 @@ test -x "$CODEX_CLI_BIN"
 
 ```text
 pluginId: chrome-dev@codex-chrome-automation-local
-version: 26.707.30751-standalone.9
+version: 26.707.30751-standalone.10
 ```
 
 Codex CLI 负责安装插件并更新启用记录，不负责本项目的 Native Host 注册。若正在运行的 Electron 宿主尚未接入本项目的 `onDidInstall` lifecycle，还需要执行下一步。
@@ -533,6 +533,10 @@ nativeHostNames 包含 com.openai.codexextension.dev
 ### 安装后每条命令固定等待约 30 秒
 
 这属于 browser-client/扩展控制链路问题，不是 manifest 安装问题。使用 `chrome-plugin-debug` 或 `chrome-plugin-fix-delivery` 继续诊断，部署扩展修复后必须 reload Chrome 扩展。
+
+### 出现 `ERROR [Statsig] ... ab.chatgpt.com/v1/initialize`
+
+`26.707.30751-standalone.10` 已从个人 Browser Client 启动链删除 Statsig、ChatGPT identity 和 Sentry 远程初始化。出现该日志说明 Desktop 仍加载 `.9` 或更早的插件快照。检查 `chrome-dev@codex-chrome-automation-local` 的安装版本及 `latest` 指向，完整退出并重新启动 Desktop 后创建新任务。不要把该请求失败解释为 Chrome Extension、Native Host 或信任校验失败。
 
 ## 个人指纹配置与信任边界（2026-09-07）
 

@@ -202,7 +202,9 @@ test("patched browser client removes remote fallback and retains independent sec
   assert.equal(source.includes('from "./site-status-policy.mjs"'), true);
   assert.equal(source.includes("new __BossSiteStatusPolicy"), true);
   assert.equal(source.includes(".throwIfBlocksUrl("), true);
-  assert.equal(source.includes('ki("https://chatgpt.com/backend-api/aura/identity")'), true);
+  assert.equal(source.includes("https://ab.chatgpt.com"), false);
+  assert.equal(source.includes("https://chatgpt.com/backend-api/aura/identity"), false);
+  assert.equal(source.includes("o33249.ingest.us.sentry.io"), false);
   assert.equal(source.includes("ensureUrlOriginConsentAllowed"), true);
   assert.equal(source.includes("ensureCurrentTabFileTransferAllowed"), true);
 });
