@@ -12,7 +12,7 @@ description: 通过 Codex Chrome 插件（@Chrome / node_repl 内核）遍历 BO
 - 只使用 Codex Chrome 插件（node_repl 内核的 `tab.playwright`）。禁止本地 Playwright/Selenium/Puppeteer/agent-browser 直连 BOSS；@Chrome 不可用时立即停止并报告。
 - 出现滑块/短信验证/账号异常/每日沟通上限（如「您今天已与150位BOSS沟通」）时立即停止，不绕过，落盘并报告。
 - 「立即沟通」是对外不可逆操作：仅在用户已明确授权批量沟通时执行；额度提示弹窗（「您今天已与N位BOSS沟通」+「好」）属于平台自身的确认步骤，点「好」即完成沟通，不点击其他确认按钮。
-- 不虚构执行结果；所有状态以页面实际返回为准。输出中的 `ERROR [Statsig]` 是宿主遥测噪音，忽略。
+- 不虚构执行结果；所有状态以页面实际返回为准。个人插件当前版本不应访问 `ab.chatgpt.com`；若出现 `ERROR [Statsig]`，先检查实际插件版本和 `latest` 指向。
 
 ## 模块
 

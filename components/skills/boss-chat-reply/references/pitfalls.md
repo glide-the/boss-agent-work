@@ -55,7 +55,7 @@
 
 ## 其他
 
-- `ERROR [Statsig] ... ab.chatgpt.com` 是宿主遥测噪音，全部忽略。
+- 个人插件当前版本不应访问 `ab.chatgpt.com`；若出现 `ERROR [Statsig]`，停止任务并检查实际插件版本和 `latest` 指向。
 - `tab.cua.scroll` 参数是 `{x, y, scrollX, scrollY}`；写 `deltaY` 会报错。
 - `tab.playwright.keyboard` 不存在；清空输入用 `locator.fill("")`。
 - 列表限流（只剩约 50 条且滚动不加载）时，滚动找人不可靠，直接搜索。

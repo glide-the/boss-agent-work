@@ -7,4 +7,4 @@ node_repl 内核中 `tab.playwright` 是 Playwright 子集，与完整 Playwrigh
 - `tab.cua.scroll` 参数签名是 `{x, y, scrollX, scrollY}`；写 `deltaY` 会报错。
 - 内核环境限制：`node:process` 被禁；`node:fs/os/path` 不可用；`process.env` 读不到。需要文件路径、目录探测时，先在外部 shell 完成，把结果以字符串硬编码进 js 调用。
 - 本地文件模块（绝对路径 `.js`/`.mjs`）每次动态 `import` 都会重新加载，适合内核重置后恢复；顶层 `const` 重复声明会报错，可复用绑定用 `var` 或 `globalThis.x = ...`。
-- 输出用 `nodeRepl.write(text)`（无附加换行，适合 JSON）；`console.log` 用于调试。宿主遥测 `ERROR [Statsig]` 与业务无关。
+- 输出用 `nodeRepl.write(text)`（无附加换行，适合 JSON）；`console.log` 用于调试。个人插件当前版本不应访问 `ab.chatgpt.com`；若出现 `ERROR [Statsig]`，检查是否仍加载旧版本运行时。

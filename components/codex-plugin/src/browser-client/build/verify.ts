@@ -439,6 +439,7 @@ async function main(): Promise<void> {
   assert.deepEqual(candidateSetup.agentKeys, baselineSetup.agentKeys);
   assert.deepEqual(candidateSetup.globalKeys, baselineSetup.globalKeys);
   assert.equal(candidateSetup.displayType, baselineSetup.displayType);
+  assert.deepEqual(candidateSetup.fetchUrls, []);
   assert.equal(Number(candidateSetup.rpcCalls) > 0, true);
   assert.deepEqual(candidateSetup.rpcServices, ["boss_browser"]);
 
@@ -482,6 +483,10 @@ async function main(): Promise<void> {
     path.join(candidateRoot, "browser-client.mjs"),
     "utf8",
   );
+  const candidateServiceSource = await readFile(
+    path.join(candidateRoot, "browser-service.mjs"),
+    "utf8",
+  );
   assert.deepEqual(
     patchSnapshot(candidatePatch, candidateBrowserSource),
     patchSnapshot(baselinePatch, baselineBrowserSource),
@@ -495,9 +500,24 @@ async function main(): Promise<void> {
     'siteStatus: "disabled"',
     'originAuthorization: "disabled"',
     "browser-use-runtime-policy",
-    'ki("https://chatgpt.com/backend-api/aura/identity")',
   ]) {
     assert.equal(candidateBrowserSource.includes(anchor), true, `missing ${anchor}`);
+  }
+  for (const endpoint of [
+    "https://ab.chatgpt.com",
+    "https://chatgpt.com/backend-api/aura/identity",
+    "https://946e373d0393408ec734c0156b0aeec6@o33249.ingest.us.sentry.io/4511236780326912",
+  ]) {
+    assert.equal(
+      candidateBrowserSource.includes(endpoint),
+      false,
+      `browser-client.mjs must not initialize remote personal-plugin telemetry: ${endpoint}`,
+    );
+    assert.equal(
+      candidateServiceSource.includes(endpoint),
+      false,
+      `browser-service.mjs must not initialize remote personal-plugin telemetry: ${endpoint}`,
+    );
   }
   assert.equal(candidateBrowserSource.includes("#browser-client-baseline"), false);
   assert.equal(
@@ -549,6 +569,7 @@ async function main(): Promise<void> {
         firstPartyOutputs: outputNames,
         browserRuntimeExport: "setupBrowserRuntime",
         runtimeSetupDifferential: "pass-via-isolated-boss-browser-service",
+        privilegedFetchDuringSetup: "none",
         cliDifferential: "pass",
         siteStatusDifferential: "pass",
         installManifestDifferential: "pass",

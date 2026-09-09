@@ -27,7 +27,7 @@ description: 排查 Codex Chrome 插件（@Chrome / node_repl 内核 tab.playwri
 | `tab.goto` >15s URL 不变但 curl 正常 | 目标站 WAF 限流 | 立即停止，冷却 1-2 小时；不刷新轰炸、不换工具绕过 |
 | 标签页变 `about:blank` | 内核剧烈重置后标签状态丢失 | 正常现象，直接重新 `tab.goto` |
 | import 报 `Module not found: browser-client.mjs` | 插件缓存目录按版本号升级，旧路径失效 | 用 `.../chrome/latest` 目录或重新探测实际版本目录 |
-| 输出被大量 `ERROR [Statsig] ab.chatgpt.com` 刷屏 | 宿主遥测噪音，内核内无法屏蔽 | 全部忽略；有效输出用 `nodeRepl.write` 放最后并保持精简 |
+| 输出出现 `ERROR [Statsig] ab.chatgpt.com` | 加载了仍含远程初始化的旧版个人 Browser Client | 检查实际插件版本和 `latest` 指向；升级后重新加载个人插件 |
 
 ## 标准恢复流程（内核重置后）
 

@@ -15,6 +15,7 @@ const servicePath = process.argv[3];
 
 const hooks: unknown[] = [];
 const responseMeta: unknown[] = [];
+const fetchUrls: string[] = [];
 let rpcCalls = 0;
 const rpcServices: string[] = [];
 const nodeRepl: Record<string, unknown> & {
@@ -27,11 +28,13 @@ const nodeRepl: Record<string, unknown> & {
     },
     async writeToml(): Promise<void> {},
   },
-  fetch: async (): Promise<Response> =>
-    new Response("{}", {
+  fetch: async (input: string | URL | Request): Promise<Response> => {
+    fetchUrls.push(String(input));
+    return new Response("{}", {
       status: 200,
       headers: { "content-type": "application/json" },
-    }),
+    });
+  },
   nativePipe: {
     async createConnection(): Promise<never> {
       throw new Error("fixture connection should stay lazy");
@@ -71,6 +74,7 @@ try {
     elicitationDisplayName: "Chrome",
     globals,
   });
+  await new Promise((resolve) => setTimeout(resolve, 0));
   const agent = globals.agent;
   console.log(
     JSON.stringify({
@@ -85,6 +89,7 @@ try {
       hooks: hooks.length,
       responseMeta,
       logged,
+      fetchUrls,
       rpcCalls,
       rpcServices,
     }),
@@ -95,6 +100,7 @@ try {
       ok: false,
       name: error instanceof Error ? error.name : typeof error,
       message: error instanceof Error ? error.message : String(error),
+      fetchUrls,
       rpcCalls,
       rpcServices,
     }),
