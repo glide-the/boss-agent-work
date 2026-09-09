@@ -9,7 +9,7 @@
 | `baselines/chrome-extension/` | 当前 Boss投递插件 `chrome-extension/` | 版本 `1.1.5.2` 的已编译基线 |
 | `baselines/native-host/` | 当前 Boss投递插件 `extension-host/macos/arm64/extension-host` | OpenAI Developer ID 签名的 arm64 Mach-O 基线 |
 
-`components/skills/chrome-file-upload-patterns/` 是 Chrome 文件上传经验库的项目权威副本；`make setup` 或 `make install-skills` 将它同步到 `$CODEX_HOME/skills/chrome-file-upload-patterns/`，未设置 `CODEX_HOME` 时使用 `~/.codex/skills/chrome-file-upload-patterns/`。该 Skill 不属于 marketplace 内的 `components/codex-plugin/skills/`。
+`components/skills/` 是项目个人技能的权威源码。`make setup` 或 `make install-skills` 会把六个 BOSS/Chrome 维护技能软连接到 `$AGENTS_HOME/skills/`（默认 `~/.agents/skills/`），并把 `boss-send-resume-button` 和 `chrome-file-upload-patterns` 软连接到 `$CODEX_HOME/skills/`（默认 `~/.codex/skills/`）。初始化不再复制技能文件；用户入口与项目源码始终指向同一目录。marketplace 内的 `boss-delivery` 继续由 `components/codex-plugin/skills/` 提供，避免重复发现。
 
 ## 不能混淆的边界
 

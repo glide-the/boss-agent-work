@@ -32,7 +32,8 @@ export async function processJobByUrl(tab, id, meta, msgs) {
     }
     const btn = tab.playwright.getByText("立即沟通", { exact: false }).first();
     await btn.click({ timeoutMs: 8000 });
-    await tab.playwright.waitForTimeout(3500);
+    // 首次建联由页面异步创建会话，等待 2-3 秒后再读取输入框。
+    await tab.playwright.waitForTimeout(2500);
     // BOSS 每日沟通额度提示弹窗（“您今天已与N位BOSS沟通”）：点击“好”完成沟通动作
     // 同时记录弹窗文本（含剩余额度），便于额度管理
     const noticeOk = tab.playwright.getByText("好", { exact: true }).first();
@@ -50,7 +51,7 @@ export async function processJobByUrl(tab, id, meta, msgs) {
       await noticeOk.click({ timeoutMs: 5000 }).catch(() => {});
       await tab.playwright.waitForTimeout(2500);
     }
-    const chat = await checkChatPage(tab);
+    let chat = await checkChatPage(tab);
     if (chat.blocked) {
       rec.result = "blocked";
       rec.note = "聊天页出现安全验证";
@@ -62,13 +63,32 @@ export async function processJobByUrl(tab, id, meta, msgs) {
       return rec;
     }
     if (!chat.onChat || !chat.hasInput) {
-      rec.result = "chat-open-failed";
-      rec.note = "未进入聊天页或无输入框";
-      return rec;
+      // 仅恢复一次：返回原岗位详情，通过「继续沟通」重新进入当前会话。
+      await tab.goto(`https://www.zhipin.com/job_detail/${id}.html`);
+      await tab.playwright
+        .waitForLoadState({ state: "domcontentloaded", timeoutMs: 15000 })
+        .catch(() => {});
+      await tab.playwright.waitForTimeout(2200);
+      const continueButton = tab.playwright.getByText("继续沟通", { exact: true }).first();
+      if (await continueButton.isVisible().catch(() => false)) {
+        await continueButton.click({ timeoutMs: 8000 });
+        await tab.playwright.waitForTimeout(2500);
+        chat = await checkChatPage(tab);
+      }
+      if (chat.blocked || chat.limit) {
+        rec.result = chat.limit ? "daily-limit" : "blocked";
+        rec.note = chat.limit ? "触发平台沟通次数上限" : "恢复会话时出现安全验证";
+        return rec;
+      }
+      if (!chat.onChat || !chat.hasInput) {
+        rec.result = "chat-input-timeout";
+        rec.note = "首次建联等待并通过继续沟通恢复一次后仍无输入框";
+        return rec;
+      }
     }
     const n = await sendMessages(tab, msgs);
     rec.result = "已沟通+已发送消息";
-    rec.note = `发送${n}条短消息`;
+    rec.note = `输入${n}句短消息，点击发送按钮并验证送达`;
     return rec;
   } catch (e) {
     rec.result = "error";

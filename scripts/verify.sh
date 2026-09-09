@@ -31,6 +31,7 @@ bun test "$WORKSPACE_ROOT/components/electron-app/test"
 for skill in "$WORKSPACE_ROOT/components/skills"/*; do
   "$PYTHON" "$WORKSPACE_ROOT/scripts/quick_validate_skill.py" "$skill"
 done
+"$WORKSPACE_ROOT/scripts/test-install-project-skills.sh"
 
 for profile in baseline extension-dev full-reconstructed; do
   marketplace="$WORKSPACE_ROOT/dist/$profile/marketplace"

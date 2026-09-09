@@ -5,7 +5,7 @@ SHELL := /bin/bash
 help:
 	@echo "Boss投递开发工作区"
 	@echo "  make setup              初始化 Python 验证环境并安装项目 Skill"
-	@echo "  make install-skills     安装项目 Skill 到 CODEX_HOME/skills"
+	@echo "  make install-skills     软连接项目 Skill 到用户技能目录"
 	@echo "  make browser-client     用 Bun 构建并部署 TypeScript 恢复脚本"
 	@echo "  make extension          构建 TypeScript/React Chrome 扩展"
 	@echo "  make electron           测试并组装 Electron Main 安装生命周期"

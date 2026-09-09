@@ -1,6 +1,6 @@
 ---
 name: boss-chat-reply
-description: 通过 Codex Chrome 插件（@Chrome / node_repl 内核）处理 BOSS 直聘聊天页（zhipin.com/web/geek/chat）的未读会话。当用户要求「点击未读」「处理未读对话」「回复 boss」「按未读筛选逐条回复」、读取某条 BOSS 聊天并分句回复、同意招聘方的附件简历请求并发送简历、或对拒绝类消息做礼貌收尾时使用。也适用于聊天页操作排错（列表点错会话、同意误点拒绝、消息流看不到最新回复）。岗位搜索页批量「立即沟通」走 boss-job-greet，全量聊天采集走 boss-chat-collect，本技能负责会话内的读与回。
+description: 通过 Codex Chrome 插件（@Chrome / node_repl 内核）处理 BOSS 直聘聊天页（zhipin.com/web/geek/chat）的未读会话。当用户要求「点击未读」「处理未读对话」「回复 boss」「按未读筛选逐条回复」、在 Boss 首次回复后发送一次简历、同意招聘方的附件简历请求、或对拒绝类消息做礼貌收尾时使用。也适用于聊天页操作排错（列表点错会话、简历重复发送、同意误点拒绝、消息流看不到最新回复）。岗位搜索页批量「立即沟通」走 boss-job-greet，全量聊天采集走 boss-chat-collect，本技能负责会话内的读与回。
 ---
 
 # BOSS Chat Reply
@@ -14,6 +14,7 @@ description: 通过 Codex Chrome 插件（@Chrome / node_repl 内核）处理 BO
 3. 发送前必须核对当前会话归属（`extractConv()` 的 `name`/`pos` 与目标一致）。归属不符，中止该条并报告。
 4. 不虚构发送结果；发完用 `verifyMyLastMessages()` 核对。
 5. 内核不能写文件：回复日志用 `nodeRepl.write(JSON)` 输出后由 shell 追加到项目 `data/reply_progress.jsonl`。
+6. 同一会话只发送一次附件简历；任何发送路径都必须先检查历史系统消息和 `data/reply_progress.jsonl`，已发送则跳过。
 
 ## 快速开始
 
@@ -51,7 +52,15 @@ await R.verifyMyLastMessages(tab, 3);
 await R.openConvBySearch(tab, "沈女士", "飞瑞");
 ```
 
-同意简历请求（仅限出现正式请求卡片时）：
+Boss 首次回复后发送一次简历（无需等待正式请求卡片）：
+
+```js
+await R.sendResumeOnceAfterBossReply(tab, "ink_memory_v5", {
+  knownAlreadySent: false, // 先查本地回复日志；已有发送记录时传 true
+});
+```
+
+出现正式请求卡片时：
 
 ```js
 await R.agreeAndSendResume(tab, "ink_memory_v5");   // 关键字选中正确简历版本
@@ -63,14 +72,14 @@ await R.agreeAndSendResume(tab, "ink_memory_v5");   // 关键字选中正确简�
 | --- | --- |
 | `browser.js` | `connectAndOpenChat()` 连接插件 + 新标签页打开聊天页（内核重置后重调） |
 | `chat-page.js` | 未读筛选 / 列表扫描 / 点击会话 / 搜索定位 / 会话提取 / 滚到底 / 分句发送 / 发送核对 |
-| `resume.js` | `agreeAndSendResume()` 简历请求同意发送（防误触拒绝）；`checkSendResumeButton()` |
+| `resume.js` | `sendResumeOnceAfterBossReply()` 首次回复后工具栏发送；`agreeAndSendResume()` 请求卡发送；两条路径统一去重 |
 | `index.js` | 汇总导出 |
 
 ## 工作流
 
 1. 连接并打开聊天页，`clickUnreadFilter()` 切到未读，`scanList()` 拿全量未读。
-2. 逐条分类（规则见 [references/reply-playbook.md](references/reply-playbook.md)）：实质提问分句回复、正式简历卡走 `agreeAndSendResume()`、模板拒绝 1 句收尾、营销号婉拒。
-3. 每条：点击/搜索打开 → `extractConv()` 核对归属 → 判定类型 → 发送 → `verifyMyLastMessages()` 核对 → 日志输出落盘。
+2. 逐条分类（规则见 [references/reply-playbook.md](references/reply-playbook.md)）：Boss 首次回复即解锁一次简历发送机会；非明确拒绝且未发过简历时走 `sendResumeOnceAfterBossReply()`；正式简历卡走 `agreeAndSendResume()`；模板拒绝 1 句收尾；营销号婉拒。
+3. 每条：点击/搜索打开 → `extractConv()` 核对归属 → 检查是否已有简历发送系统消息 → 判定与执行 → 核对发送结果 → 日志输出落盘。
 4. 全部处理完再点一次未读筛选确认清零；对仍显示未读的条目点进去 `scrollConvToBottom()` 核验（徽标跨标签页可能残留）。
 
 ## References

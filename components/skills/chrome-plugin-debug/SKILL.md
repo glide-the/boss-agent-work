@@ -7,6 +7,14 @@ description: 排查 Codex Chrome 插件（@Chrome / node_repl 内核 tab.playwri
 
 通过 node_repl 内核的 `tab.playwright` 控制 Chrome 时的故障排查手册。核心教训来自 BOSS 直聘自动化（job-greet / chat-reply / chat-collect）多次实战复盘。
 
+## 测试阶段执行模型
+
+将可独立执行的复现、延迟测量、日志采集和修复后验证委派给
+`luna_test_runner`（`gpt-5.6-luna`、high reasoning、Fast mode），并等待其返回
+命令、退出码和证据。主 Agent 继续负责根因判断、代码修改、进程处置、扩展重载和
+真实账号操作。子 Agent 无法访问当前 Chrome 会话时必须报告 harness blocker，禁止
+换用 Playwright/Selenium 冒充 Chrome 插件验证。统一边界见 `$luna-test-stage`。
+
 ## 首要原则
 
 1. **内核随时会重置，磁盘是唯一可靠状态**：所有进度立即落盘 JSONL；内核中的绑定（模块、队列、计数）都视为易失。
