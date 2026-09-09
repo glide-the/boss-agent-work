@@ -1,0 +1,4 @@
+interface:
+  display_name: "BOSS 发送附件简历"
+  short_description: "Send a requested BOSS resume attachment"
+  default_prompt: "Use $boss-send-resume-button to send my ink_memory_v5 attachment through the current BOSS formal resume-request card without sending chat messages."

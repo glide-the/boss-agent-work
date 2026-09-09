@@ -13,4 +13,4 @@ fi
 
 "$WORKSPACE_ROOT/scripts/install-project-skills.sh"
 
-echo "Development environment ready: $VENV"
+echo "Development environment ready; project skills linked: $VENV"

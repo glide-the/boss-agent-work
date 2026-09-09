@@ -24,7 +24,7 @@ description: 通过 Codex Chrome 插件（@Chrome / node_repl 内核）遍历 BO
 | `urls.js` | 已知分类 URL 样例；新任务按 URL 构造规则动态生成 |
 | `scan.js` | `scanCards` / `scanAllWithScroll`（连续两次滚动无新增即停） |
 | `detail.js` | 详情校验 `extractJobDetail`、聊天页检测 `checkChatPage` |
-| `chat.js` | `sendMessages` 分句逐条发送（每句一条 Enter） |
+| `chat.js` | `sendMessages` 一次输入多句消息，重新定位并点击「发送」，校验送达状态与输入框清空 |
 | `filter.js` | 跳过规则、标题去重、`makeQueue` |
 | `messages.js` | 内置消息模板（兜底）+ `setMsgsForKind` 动态注册（优先） |
 | `process.js` | `processJobByUrl` 单岗全流程、`runChunk` 批处理（遇 daily-limit/blocked 自停） |
@@ -39,6 +39,14 @@ description: 通过 Codex Chrome 插件（@Chrome / node_repl 内核）遍历 BO
 4. **逐分类执行**：打开 URL → `scanAllWithScroll` → `makeQueue(cards, progress.doneKeys)` 去重过滤 → 按 5 个/批 `runChunk`，每批后汇报简短进度。
 5. **停止条件**：额度/风控触发即全停；单岗失败记录原因继续；连续两次滚动无新增视为分类遍历完成；完成一个分类再进下一个。
 6. **最终报告**：分类统计、成功清单（岗位/公司/城市/结果）、跳过及原因、失败及原因、是否遍历到末尾、是否遇到风控、确认未使用本地自动化工具。
+
+## 首次建联与发送确认
+
+1. 点击「立即沟通」后等待约 2.5 秒，再重新读取聊天页；不要立即判定输入框缺失。
+2. 若首次建联后仍没有输入框，返回该岗位详情页，重新读取页面并只点击一次「继续沟通」，再等待约 2.5 秒。仍无输入框则记录失败并继续下一岗位，禁止反复点击。
+3. 将多句短消息一次性输入聊天框；第一句必须与当前岗位需求直接相关，后续句来自简历。
+4. 输入完成后重新读取可见 DOM，定位当前 `<button type="send">发送</button>` 的最新节点并点击。不得仅用 Enter 代替发送按钮，也不得复用输入前的元素引用；语义定位点击后输入框未清空不算发送成功。
+5. 点击后重新读取聊天页，至少同时确认：消息正文出现在当前会话且状态为「送达」或「已读」，输入框已经清空。确认失败时记录 `send-unverified`，不要再次点击，以免重复发送。
 
 ## 标准调用（node_repl 内核）
 
@@ -59,7 +67,7 @@ const queue = JG.makeQueue(cards, progress.doneKeys, "ai");
 const { results, stopped } = await JG.runChunk(tab, queue.slice(0, 5), "关键词(城市)", progress, null);
 ```
 
-单次 js 调用控制在约 60 秒内（5 个岗位/批），超时会导致内核重置；所有状态必须经 `progress` 落盘，重置后重新 import + `setupChrome` + `createProgress` 即可续跑。
+单次 js 调用控制在约 60 秒内（5 个岗位/批），超时会导致内核重置；所有状态必须经 `progress` 落盘，重置后重新 import + `setupChrome` + `createProgress` 即可续跑。首次建联等待和一次恢复重试都要计入批次时间预算。
 
 ## 筛选与去重要点
 

@@ -7,6 +7,16 @@ description: Diagnose, inspect, deploy, and roll back the Codex Chrome plugin fi
 
 Use this skill to work with the bundled Codex Chrome plugin repair package. The package addresses two known failure modes:
 
+## Test-stage execution model
+
+Delegate bounded package inspection, clean reproduction, timing measurement,
+and post-fix verification to `luna_test_runner` (`gpt-5.6-luna`, high
+reasoning, Fast mode), then review its exact receipts. Keep deployment,
+rollback, process termination, extension reload, and any shared browser-profile
+mutation in the primary agent. If the runner cannot access the Chrome plugin,
+report a harness blocker instead of substituting another browser. Apply
+`$luna-test-stage` for the shared routing and cleanup contract.
+
 - Every `tab.playwright` command takes about 30 seconds on busy pages such as BOSS.
 - After a node_repl reset, Chrome commands hang because the extension believes it is attached while Chrome has detached the debugger.
 

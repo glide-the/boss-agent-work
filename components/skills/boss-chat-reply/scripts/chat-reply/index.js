@@ -13,4 +13,9 @@ export {
   sendMessages,
   verifyMyLastMessages,
 } from "./chat-page.js";
-export { agreeAndSendResume, checkSendResumeButton } from "./resume.js";
+export {
+  agreeAndSendResume,
+  sendResumeOnceAfterBossReply,
+  inspectResumeState,
+  checkSendResumeButton,
+} from "./resume.js";

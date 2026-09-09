@@ -7,6 +7,14 @@ description: 诊断并修复 Codex Chrome 插件（@Chrome / node_repl 内核 / 
 
 针对 Codex Chrome 插件链路（内核 browser-client → extension-host → 扩展 SW → chrome.debugger）的确定性延迟/挂起。通用内核重置/僵尸调用/WAF 问题见 `chrome-plugin-debug` 技能。
 
+## 测试阶段执行模型
+
+将可独立执行的双侧探针复现、延迟测量、日志对齐和修复后验证委派给
+`luna_test_runner`（`gpt-5.6-luna`、high reasoning、Fast mode），并等待其返回
+原始命令回执。主 Agent 负责补丁、备份恢复、进程终止、扩展重载和最终裁决。
+子 Agent 无法访问当前 Chrome 会话时必须报告 harness blocker，不得换浏览器绕过。
+统一边界见 `$luna-test-stage`。
+
 ## 快速判定
 
 | 观测 | 根因 | 处置 |

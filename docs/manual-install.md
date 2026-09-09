@@ -262,14 +262,17 @@ make baseline
 make verify
 ```
 
-`make setup` 除了初始化 `.venv`，还会把项目维护的 `components/skills/chrome-file-upload-patterns` 同步到 `$CODEX_HOME/skills/chrome-file-upload-patterns`；未设置 `CODEX_HOME` 时使用 `~/.codex/skills/chrome-file-upload-patterns`。只需要重新安装 Skill 时可运行：
+`make setup` 除了初始化 `.venv`，还会把项目维护的六个 BOSS/Chrome 技能软连接到 `$AGENTS_HOME/skills`（默认 `~/.agents/skills`），并把 `boss-send-resume-button`、`chrome-file-upload-patterns` 软连接到 `$CODEX_HOME/skills`（默认 `~/.codex/skills`）。只需要重新建立或检查软连接时可运行：
 
 ```bash
 cd /Users/dmeck/project/boss-agent-work/develop
 make install-skills
+./scripts/install-project-skills.sh --check
 ```
 
-项目目录是该 Skill 的可维护源码，`~/.codex/skills` 是初始化生成的安装副本；不要只修改安装副本，否则下次初始化会被项目版本覆盖。
+项目目录是可维护源码，用户技能目录只保存软连接。通过任一链接编辑时，改动会直接进入项目工作区并出现在 Git 状态中。
+
+首次迁移时，安装器只会自动替换内容与项目完全一致的实体目录；检测到差异会停止，要求先把用户目录改动合并回项目。完成审核后可执行 `./scripts/install-project-skills.sh --migrate-existing`，旧目录会移动到对应的 `$AGENTS_HOME/backups/project-skill-links/` 或 `$CODEX_HOME/backups/project-skill-links/`，不会被直接删除。
 
 `make baseline` 会先调用 `make browser-client`。规范要求它只从 `components/codex-plugin/src/browser-client` 使用锁定的 Bun 构建全部第一方脚本和配置；差分失败时不会继续组装 marketplace。Browser Client 的权威源码、生成物和仍保留的兼容 kernel 边界见 [Codex 插件发布与使用说明](codex-plugin-release.md#2-制品与源码映射)，不得把过渡生成物描述为上游官方源码的完整恢复。
 
