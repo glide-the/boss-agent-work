@@ -170,6 +170,33 @@ sequenceDiagram
     end
 ```
 
+## 2026-09-10：Desktop 工具目录未加载 `boss_repl`
+
+截图对应任务 `01a0897a-bfb9-73c0-8def-c3c6a43da30d` 的 Desktop 日志直接记录了两次 `boss_repl` 启动失败：`MCP startup failed: No such file or directory (os error 2)`。同一时刻任务能够读取 `.10` 的 `boss-delivery` skill；磁盘上的 `.10`、`latest`、用户级 MCP 授权、Native Host 注册和服务授权探针也都正常。这组证据确认故障位于 Desktop 缓存的旧 `.mcp.json` 启动路径：插件升级删除旧版本目录后，旧进程仍以该目录作为 `cwd`，因此工具没有进入任务目录。系统中同期出现的 `mcp-server-darwin-arm64` 代码签名报告不是 `boss_repl` 的进程；`boss_repl` 由 Desktop 配套 Node 启动，不把该报告作为本次根因。
+
+最小修复是让 `.mcp.json` 缓存一段固定 bootstrap。bootstrap 从继承的 `CODEX_HOME` 读取用户配置根目录，未设置时使用 `~/.codex`，每次启动再解析 `plugins/cache/codex-chrome-automation-local/chrome-dev/latest/scripts/launch-browser-service.mjs`。初始化生命周期继续原子维护 `latest` 软链接。这样 Desktop 即使缓存上一版本的 MCP 声明，下一次启动 server 时也会进入当前版本。bootstrap 字节由 preflight 精确校验，环境变量只选择受支持的用户配置根目录，不能提供任意指纹、不能改变插件 selector、不能覆盖企业策略。
+
+```mermaid
+sequenceDiagram
+    participant D as ChatGPT Desktop
+    participant M as 缓存的 boss_repl 声明
+    participant L as 用户 cache/latest
+    participant I as 初始化入口
+    participant R as 当前版本 launcher
+    I->>L: 原子更新软链接到新版本
+    D->>M: 新任务启动 boss_repl
+    M->>M: 解析 CODEX_HOME（默认 ~/.codex）
+    M->>L: 读取稳定入口
+    alt latest 有效
+        L->>R: 加载当前 launcher
+        R-->>D: 登记 js / js_reset
+    else latest 缺失或损坏
+        L-->>D: 明确 ENOENT，初始化失败
+    end
+```
+
+评审结论：**通过**。仅要求重启而不修改启动路径会在下一次升级重现；保留所有旧版本目录会依赖插件管理器未承诺的缓存策略；新增常驻服务或全局 MCP 配置超出问题范围。稳定 `latest` 启动路径复用现有生命周期和 `CODEX_HOME` 优先级，不修改 Native Host、扩展 ID、官方插件、通信协议或旧 SHA allowlist。当前已经缓存旧直连声明的 Desktop 进程仍需在安装 `.11` 后完整退出并重新打开一次。
+
 ## 设计评审
 
 | 检查项 | 结论 | 理由 |

@@ -1,7 +1,17 @@
 # 个人插件身份与信任配置修复结果
 
-日期：2026-09-07
+日期：2026-09-07；更新：2026-09-10
 工程：`/Users/dmeck/project/boss-agent-work/develop`
+
+## 2026-09-10 工具加载修复
+
+截图任务 `01a0897a-bfb9-73c0-8def-c3c6a43da30d` 的 Desktop 日志确认 `boss_repl` 两次以 `No such file or directory (os error 2)` 启动失败。任务能读取 `.10` skill，但运行中的 Desktop 仍缓存以旧版本目录为 `cwd` 的 MCP 声明；旧目录已由升级清理，因此 `js/js_reset` 没有进入任务工具目录。磁盘配置、个人插件授权、Native Host 和 `boss_browser` 动态授权探针均通过，排除了扩展未安装、信任失败和 Host 注册失败。
+
+`.11` 把 MCP 启动声明改成稳定 bootstrap：从 `CODEX_HOME`（默认 `~/.codex`）解析 `chrome-dev/latest/scripts/launch-browser-service.mjs`，不再缓存版本目录 `cwd`。初始化器继续维护 `latest` 软链接，preflight 精确校验 bootstrap。修改没有写入或替换 `NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S`。
+
+独立验证结果：Electron lifecycle 7/7、信任/升级路径 10/10、手动初始化 2/2、`make baseline` 中 Browser Client 19/19；临时 `CODEX_HOME` 已验证旧版本目录删除后缓存声明仍启动当前 launcher，重复初始化返回 `no-op`，无关配置和 registry 保持。真实用户安装已更新至 `.11`，`latest` 指向 `.11`，安装后 dry-run 为 `ready=true`、`effectiveTrust=isolated-service-authorized`、`nativePipeAvailable=true`；真实 `config.toml` 哈希保持不变。
+
+修改前快照在 `/Users/dmeck/.codex/backups/boss-repl-tool-loading-20260910T042431Z`，初始化器快照在 `/Users/dmeck/.codex/backups/personal-plugin-native-host-f015f3dc-3817-461d-9ead-b4cdc44ceb6b/snapshot.json`。当前 Desktop 进程没有被自动关闭；它仍缓存 `.10` 的旧声明，必须完整退出并重新打开后创建新任务，才能验证 GUI 工具目录和真实标签页读取。因此当前 GUI 连接状态仍为未验证。
 
 ## 结果
 

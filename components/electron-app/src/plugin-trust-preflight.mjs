@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { bossPluginCacheRoot, bossPluginIdentity } from "./boss-plugin-native-host-lifecycle.mjs";
+import { bossReplLatestLauncherBootstrap } from "./boss-plugin-mcp.mjs";
 
 export const expectedFingerprintVariable = "BOSS_PLUGIN_EXPECTED_BROWSER_CLIENT_SHA256";
 export const browserClientTrustVariable = "NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S";
@@ -99,11 +100,11 @@ export async function inspectPluginTrust({ codexHome, versionRoot, runtimePaths,
     await fs.access(launcherPath);
     const mcp = JSON.parse(await fs.readFile(mcpPath, "utf8"));
     const bossRepl = mcp?.mcpServers?.boss_repl;
-    if (bossRepl?.command !== runtimePaths.nodePath || bossRepl?.cwd !== "." ||
-        !Array.isArray(bossRepl.args) || bossRepl.args.length !== 1 ||
-        bossRepl.args[0] !== "./scripts/launch-browser-service.mjs" ||
+    if (bossRepl?.command !== runtimePaths.nodePath || bossRepl?.cwd !== undefined ||
+        !Array.isArray(bossRepl.args) || bossRepl.args.length !== 2 ||
+        bossRepl.args[0] !== "-e" || bossRepl.args[1] !== bossReplLatestLauncherBootstrap ||
         (Array.isArray(bossRepl.omit_tools_from) && bossRepl.omit_tools_from.includes("code_mode"))) {
-      throw new Error("Personal .mcp.json must declare the isolated boss_repl launcher and expose it to Codex code mode.");
+      throw new Error("Personal .mcp.json must start boss_repl through the user cache latest link and expose it to Codex code mode.");
     }
     const clientUsesPersonalRpc = clientBytes.includes(Buffer.from("boss_browser")) &&
       clientBytes.includes(Buffer.from("BOSS_BROWSER_SERVICE_UNAVAILABLE"));

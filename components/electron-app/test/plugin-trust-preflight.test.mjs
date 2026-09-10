@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { inspectPluginTrust, resolveUserCodexHome, sha256 } from "../src/plugin-trust-preflight.mjs";
+import { bossReplLatestLauncherBootstrap } from "../src/boss-plugin-mcp.mjs";
 import { resolveManualInstallPlan, reconcileManualInstall } from "../src/manual-install-environment.mjs";
 import { rollbackNativeHostBackup } from "../src/native-host-backup.mjs";
 const selector = "chrome-dev@codex-chrome-automation-local";
@@ -21,7 +22,7 @@ async function fixture(t) {
   const service = "export async function handleRpc() {}";
   const files = {
     [path.join(versionRoot, ".codex-plugin/plugin.json")]: JSON.stringify({ name: "chrome-dev", version: "1.0.0", mcpServers: "./.mcp.json" }),
-    [path.join(versionRoot, ".mcp.json")]: JSON.stringify({ mcpServers: { boss_repl: { command: runtimePaths.nodePath, args: ["./scripts/launch-browser-service.mjs"], cwd: "." } } }),
+    [path.join(versionRoot, ".mcp.json")]: JSON.stringify({ mcpServers: { boss_repl: { command: runtimePaths.nodePath, args: ["-e", bossReplLatestLauncherBootstrap] } } }),
     [clientPath]: client,
     [path.join(versionRoot, "scripts/browser-service.mjs")]: service,
     [path.join(versionRoot, "scripts/launch-browser-service.mjs")]: "fixture launcher",
@@ -85,6 +86,29 @@ test("boss_repl remains callable from Codex code mode", async (t) => {
   const report = await inspectPluginTrust(f.input);
   assert.equal(report.ready, false);
   assert.ok(report.issues.some((issue) => issue.code === "CONFIG_CONFLICT"));
+});
+
+test("cached boss_repl configuration follows latest after its source version is removed", async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "boss-mcp-latest-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const codexHome = path.join(root, "codex");
+  const cacheRoot = path.join(codexHome, "plugins/cache/codex-chrome-automation-local/chrome-dev");
+  const oldRoot = path.join(cacheRoot, "1.0.0");
+  const currentRoot = path.join(cacheRoot, "2.0.0");
+  const launcher = path.join(currentRoot, "scripts/launch-browser-service.mjs");
+  await fs.mkdir(path.dirname(launcher), { recursive: true });
+  await fs.mkdir(oldRoot, { recursive: true });
+  await fs.writeFile(launcher, 'console.log("latest-launcher-ok");\n');
+  await fs.symlink(currentRoot, path.join(cacheRoot, "latest"));
+  const staleArguments = ["-e", bossReplLatestLauncherBootstrap];
+  await fs.rm(oldRoot, { recursive: true });
+
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const result = await promisify(execFile)(process.execPath, staleArguments, {
+    env: { ...process.env, CODEX_HOME: codexHome },
+  });
+  assert.equal(result.stdout.trim(), "latest-launcher-ok");
 });
 
 test("explicit boss_repl MCP denials are conflicts and are not replaced", async (t) => {

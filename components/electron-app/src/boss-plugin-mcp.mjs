@@ -1,0 +1,2 @@
+export const bossReplLatestLauncherBootstrap = 'const path = require("node:path"); const os = require("node:os"); const { pathToFileURL } = require("node:url"); const codexHome = process.env.CODEX_HOME || path.join(os.homedir(), ".codex"); const launcher = path.join(codexHome, "plugins", "cache", "codex-chrome-automation-local", "chrome-dev", "latest", "scripts", "launch-browser-service.mjs"); import(pathToFileURL(launcher).href).catch((error) => { console.error(error); process.exitCode = 1; });';
+

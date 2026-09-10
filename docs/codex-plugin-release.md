@@ -1,8 +1,8 @@
 # Boss投递 Codex 插件发布与使用说明
 
-发布日期：2026-09-09
+发布日期：2026-09-10
 
-插件版本：`26.707.30751-standalone.10`
+插件版本：`26.707.30751-standalone.11`
 
 Chrome 扩展版本：`1.1.5.2`
 
@@ -22,6 +22,7 @@ Chrome 扩展版本：`1.1.5.2`
 - 个人插件不再依赖旧的 `NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S` 共享 allowlist。插件自带 `boss_repl` MCP，并在其子进程中注册独立的 `boss_browser` trusted service。
 - Native Host 用户级注册增加只读 preflight、写入前复核、备份、幂等更新和冲突保护；不会覆盖官方 Host `com.openai.codexextension`、其他插件 registry entry 或企业策略。
 - 初始化器通过 Codex App Server 只授权个人插件的 `boss_repl.js` 工具；用户层版本条件、快照和显式策略冲突检查避免覆盖其他配置。
+- `boss_repl` 通过用户缓存的 `chrome-dev/latest` 软链接定位当前 launcher。Desktop 缓存上一版本 MCP 声明时，插件升级删除旧版本目录也不会再让新任务因 `ENOENT` 丢失工具。
 - 发布组装会排除 AppleDouble 和 `.DS_Store`，打包后会拒绝 macOS 元数据与不安全路径；Rust 重建 Host 会把工作区、Cargo 和用户主目录重映射为稳定路径。
 - `boss_repl` 不再从 Codex Code Mode 工具目录中排除；技能从实际 `SKILL.md` 路径解析插件根目录，避免升级后继续引用已删除的版本目录。
 
@@ -150,9 +151,9 @@ bun components/electron-app/bin/reconcile-native-host.mjs --json
 /Users/dmeck/project/boss-agent-work/develop/dist/baseline/marketplace/plugins/chrome-dev/chrome-extension
 ```
 
-确认名称为 `Boss投递`、扩展 ID 与本文一致。安装或升级插件后完整退出并重新启动 ChatGPT/Codex Desktop，使新 `.mcp.json` 和 `boss_repl` 被新任务加载。本文中的命令不会自动关闭 Desktop 或 Chrome。
+确认名称为 `Boss投递`、扩展 ID 与本文一致。从 `.10` 升级到 `.11` 后完整退出并重新启动一次 ChatGPT/Codex Desktop，使新的稳定 `.mcp.json` 声明进入进程缓存。后续版本升级会由该声明在启动时解析 `latest`。本文中的命令不会自动关闭 Desktop 或 Chrome。
 
-如果新任务仍引用旧版本目录，或只读取到技能却看不到 `mcp__boss_repl__js`，Desktop 仍在使用安装前的插件快照。此时 `codex mcp list --json` 中出现 `boss_repl` 只能证明磁盘配置可解析；必须完整重启 Desktop 并创建新任务，才能验证工具目录已经刷新。
+如果 `.11` 安装后的第一个新任务只读取到技能却看不到 `mcp__boss_repl__js`，Desktop 仍在使用 `.10` 的直连版本目录声明。此时 `codex mcp list --json` 中出现 `boss_repl` 只能证明磁盘配置可解析；完整重启 Desktop 并创建新任务。重启后 `codex mcp get boss_repl --json` 应显示 `-e` bootstrap，且不再包含版本目录 `cwd`。
 
 若要验收本版本的对话取消扩展代码，应改为构建和安装 `extension-dev`，并在 `chrome://extensions/` 重新加载对应目录。`baseline` 不包含这部分源码扩展改动。
 
