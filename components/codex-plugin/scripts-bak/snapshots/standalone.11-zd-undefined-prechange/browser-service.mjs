@@ -25859,7 +25859,7 @@ function RV() {
   };
 }
 function AV(t22, e, r) {
-  Ve("browser_use_backend_discovery_failed", e, {
+  zd("browser_use_backend_discovery_failed", e, {
     backend: "iab",
     browserCount: String(t22.browserCount),
     candidatePipeCount: String(t22.candidatePipeCount),
@@ -26904,6 +26904,12 @@ async function ATe({
       executeAgentCommand: async (command) => await __bossTransport.executeAgentCommand(command)
     };
 }
+async function __setupBrowserServiceRuntime({
+  elicitationDisplayName = "Boss投递",
+  globals = globalThis
+} = {}) {
+  return await ATe({ elicitationDisplayName, globals, __serviceMode: true });
+}
 async function KP(t22, e, r = {}) {
   if (!OG(e))
     return;
@@ -26916,6 +26922,51 @@ async function KP(t22, e, r = {}) {
 function OG(t22) {
   return typeof t22 == "object" && t22 != null && !Array.isArray(t22);
 }
+
+// browser-service.ts
+function ping(params) {
+  const nonce = typeof params === "object" && params !== null && "nonce" in params ? String(params.nonce) : "";
+  return {
+    nativePipeAvailable: typeof globalThis.nodeRepl?.nativePipe?.createConnection === "function",
+    nonce,
+    protocolVersion: 1,
+    service: "boss_browser"
+  };
+}
+var runtime = null;
+async function setup(params) {
+  if (params !== undefined && (typeof params !== "object" || params === null)) {
+    throw new Error("Invalid boss_browser setup parameters");
+  }
+  if (runtime !== null)
+    await runtime.dispose();
+  runtime = await __setupBrowserServiceRuntime({
+    elicitationDisplayName: "Boss投递",
+    globals: globalThis
+  });
+  return {
+    apiManifest: runtime.apiManifest,
+    disabledMemberIds: runtime.disabledMemberIds
+  };
+}
+async function execute(params) {
+  if (runtime === null) {
+    throw new Error("Boss投递 browser service has not been initialized");
+  }
+  return await runtime.executeAgentCommand(params);
+}
+async function handleRpc(request) {
+  if (request === null || typeof request !== "object") {
+    throw new Error("Invalid boss_browser service request");
+  }
+  if (request.method === "ping")
+    return ping(request.params);
+  if (request.method === "setup")
+    return await setup(request.params);
+  if (request.method === "execute")
+    return await execute(request.params);
+  throw new Error(`Unsupported boss_browser service request: ${String(request.method)}`);
+}
 export {
-  ATe as setupBrowserRuntime
+  handleRpc
 };

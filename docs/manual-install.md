@@ -300,7 +300,7 @@ test -x "$CODEX_CLI_BIN"
 
 ```text
 pluginId: chrome-dev@codex-chrome-automation-local
-version: 26.707.30751-standalone.11
+version: 26.707.30751-standalone.12
 ```
 
 Codex CLI 负责安装插件并更新启用记录，不负责本项目的 Native Host 注册。若正在运行的 Electron 宿主尚未接入本项目的 `onDidInstall` lifecycle，还需要执行下一步。
@@ -540,6 +540,10 @@ nativeHostNames 包含 com.openai.codexextension.dev
 ### 出现 `ERROR [Statsig] ... ab.chatgpt.com/v1/initialize`
 
 `26.707.30751-standalone.10` 已从个人 Browser Client 启动链删除 Statsig、ChatGPT identity 和 Sentry 远程初始化。出现该日志说明 Desktop 仍加载 `.9` 或更早的插件快照。检查 `chrome-dev@codex-chrome-automation-local` 的安装版本及 `latest` 指向，完整退出并重新启动 Desktop 后创建新任务。不要把该请求失败解释为 Chrome Extension、Native Host 或信任校验失败。
+
+### 出现 `BOSS_BROWSER_SERVICE_UNAVAILABLE: Error: zd is not defined`
+
+这是 `26.707.30751-standalone.10` 和 `.11` 的 Browser Service 生成物缺陷：禁用 Statsig 后仍有一个后端发现分支直接引用已删除的内部变量。升级到 `.12`，重新执行 reconcile，并在新任务中调用 `agent.browsers.get("extension")`。不要添加 `NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S`；旧 SHA 信任列表不能修复缺失的 JavaScript 符号。如果新任务仍复用旧服务，完整退出并重新启动 ChatGPT Desktop 后再验证。
 
 ## 个人指纹配置与信任边界（2026-09-07）
 

@@ -34233,7 +34233,7 @@ function RV() {
   };
 }
 function AV(t, e, r) {
-  Ve("browser_use_backend_discovery_failed", e, {
+  zd("browser_use_backend_discovery_failed", e, {
     backend: "iab",
     browserCount: String(t.browserCount),
     candidatePipeCount: String(t.candidatePipeCount),

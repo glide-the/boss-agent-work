@@ -25859,7 +25859,7 @@ function RV() {
   };
 }
 function AV(t22, e, r) {
-  Ve("browser_use_backend_discovery_failed", e, {
+  zd("browser_use_backend_discovery_failed", e, {
     backend: "iab",
     browserCount: String(t22.browserCount),
     candidatePipeCount: String(t22.candidatePipeCount),
