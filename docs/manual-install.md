@@ -300,7 +300,7 @@ test -x "$CODEX_CLI_BIN"
 
 ```text
 pluginId: chrome-dev@codex-chrome-automation-local
-version: 26.707.30751-standalone.10
+version: 26.707.30751-standalone.11
 ```
 
 Codex CLI 负责安装插件并更新启用记录，不负责本项目的 Native Host 注册。若正在运行的 Electron 宿主尚未接入本项目的 `onDidInstall` lifecycle，还需要执行下一步。
@@ -469,7 +469,7 @@ jq '[.entries[] | select(.nativeHostNames[]? == "com.openai.codexextension.dev")
 
 `manifest-valid` 和 `service-authorized` 都不等于 Chrome 端已经连接。最终验证应在 Desktop 重新加载插件后的 `boss_repl` 会话中加载 Boss投递 Browser Client，执行一次简单的标签页读取；如果返回 `Browser is not available: extension`，按 Native Host/扩展链路排查，不把其他浏览器机制的结果当成成功。
 
-如果新任务仍引用已经删除的插件版本目录，或工具清单没有 `mcp__boss_repl__js`，说明 Desktop 仍在使用安装前的插件快照。完整退出并重新启动 Desktop，再创建新任务；仅安装新版本或在旧任务中重试不会刷新该快照。`codex mcp list --json` 能看到 `boss_repl` 只证明磁盘配置已被 CLI 解析，不能代替新任务的工具发现验收。
+从 `.10` 升级到 `.11` 后，完整退出并重新启动 Desktop，再创建新任务，使稳定 launcher 声明进入进程缓存。`.11` 的声明不保存版本目录 `cwd`，而是在每次启动 `boss_repl` 时通过 `CODEX_HOME`（默认 `~/.codex`）解析 `chrome-dev/latest`。`codex mcp list --json` 能看到 `boss_repl` 只证明磁盘配置已被 CLI 解析，不能代替新任务的工具发现验收。
 
 ## 七、更新插件
 
