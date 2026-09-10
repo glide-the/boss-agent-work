@@ -441,7 +441,15 @@ async function main(): Promise<void> {
   assert.equal(candidateSetup.displayType, baselineSetup.displayType);
   assert.deepEqual(candidateSetup.fetchUrls, []);
   assert.equal(Number(candidateSetup.rpcCalls) > 0, true);
-  assert.deepEqual(candidateSetup.rpcServices, ["boss_browser"]);
+  assert.deepEqual(candidateSetup.rpcServices, ["boss_browser", "boss_browser"]);
+  const extensionDiscovery = objectRecord(candidateSetup.extensionDiscovery);
+  assert.equal(extensionDiscovery.ok, false);
+  assert.equal(extensionDiscovery.name, "Error");
+  assert.equal(
+    String(extensionDiscovery.message).includes("zd is not defined"),
+    false,
+    "Chrome backend discovery must not call the removed Statsig binding",
+  );
 
   const serviceModule = await importFresh<Record<string, unknown>>(
     path.join(candidateRoot, "browser-service.mjs"),
@@ -517,6 +525,13 @@ async function main(): Promise<void> {
       candidateServiceSource.includes(endpoint),
       false,
       `browser-service.mjs must not initialize remote personal-plugin telemetry: ${endpoint}`,
+    );
+  }
+  for (const source of [candidateBrowserSource, candidateServiceSource]) {
+    assert.equal(
+      source.includes('zd("browser_use_backend_discovery_failed"'),
+      false,
+      "backend discovery must use the disabled telemetry abstraction",
     );
   }
   assert.equal(candidateBrowserSource.includes("#browser-client-baseline"), false);

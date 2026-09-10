@@ -76,6 +76,22 @@ try {
   });
   await new Promise((resolve) => setTimeout(resolve, 0));
   const agent = globals.agent;
+  let extensionDiscovery: unknown = null;
+  if (servicePath != null) {
+    try {
+      const browsers = Reflect.get(agent as object, "browsers") as {
+        get(selector: string): Promise<unknown>;
+      };
+      await browsers.get("extension");
+      extensionDiscovery = { ok: true };
+    } catch (error) {
+      extensionDiscovery = {
+        ok: false,
+        name: error instanceof Error ? error.name : typeof error,
+        message: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
   console.log(
     JSON.stringify({
       ok: true,
@@ -92,6 +108,7 @@ try {
       fetchUrls,
       rpcCalls,
       rpcServices,
+      extensionDiscovery,
     }),
   );
 } catch (error) {

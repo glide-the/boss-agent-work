@@ -1,18 +1,22 @@
 {
   "path": "components/codex-plugin/scripts-bak",
   "createdBeforeScriptsMutation": true,
-  "fileCount": 352,
+  "fileCount": 356,
   "treeHashAlgorithm": "sha256(relative-path + NUL + file-bytes + NUL, sorted by relative path)",
-  "treeSha256": "963621722890dc140f30d6657e2a1443164f0b9900fd97d3ec68cfe4d7268fa9",
+  "treeSha256": "9f884c8b280281b772aef53a2507d15ce07a328eae90a82911ad749584a7ee0f",
   "additionalSnapshots": {
+    "snapshots/standalone.11-zd-undefined-prechange/browser-client.mjs": "cc0fbf13a1ab7e71d70150ea01effec7f594a28ba0426f890c2d30cfc9ce4e12",
+    "snapshots/standalone.11-zd-undefined-prechange/browser-runtime.generated.js": "27fd3df3bc8effa0886063f425f38b902f68a47f18e997244a2b74dc9f0adfab",
+    "snapshots/standalone.11-zd-undefined-prechange/browser-service.mjs": "3b270aa1dd0705d0c09c719e196a61c110e034db055e5dc4d823183a2ae68aaa",
+    "snapshots/standalone.11-zd-undefined-prechange/SHA256SUMS": "d5892ff8ea373889092be38fbdc67b5bf7ce958d5ad7394ad384709ed49d2d35",
     "snapshots/standalone.8-response-meta-compat/browser-client.mjs": "d3a46310e170cd04943dc1a2c91b46adfdb1d099d473066235ba04123df0626f",
-    "snapshots/standalone.8-void-response-hang-prechange/SHA256SUMS": "37b98a863c557ea0678c63de2ad970af44f0f98ea33f8864752df69132aa5b87",
     "snapshots/standalone.8-void-response-hang-prechange/browser-client.mjs": "67abc484942685467774857a3bcc228ba9c97e040efa7eae88923d01471afe3a",
     "snapshots/standalone.8-void-response-hang-prechange/browser-service.mjs": "114346d861435122511479f30477a8af7df0253d8f988e9f9191a6272d049c84",
-    "snapshots/standalone.9-remote-chatgpt-init-prechange/SHA256SUMS": "a335dac593aa78d1ea518b7f91c73685337fe582938e626caaa03862b3027d4b",
+    "snapshots/standalone.8-void-response-hang-prechange/SHA256SUMS": "37b98a863c557ea0678c63de2ad970af44f0f98ea33f8864752df69132aa5b87",
     "snapshots/standalone.9-remote-chatgpt-init-prechange/browser-client.mjs": "38a49b370f3ea42d20d5b89567d2a5064fb89720c34c0511d48f4489a24d5afd",
     "snapshots/standalone.9-remote-chatgpt-init-prechange/browser-runtime.generated.js": "2d2ea0edc7345dee31210225f23a6df251b6c49593104b105519bdddae1118e4",
-    "snapshots/standalone.9-remote-chatgpt-init-prechange/browser-service.mjs": "04ad2c2fe354c61f676844efa593da79a53837e7c067afdd43f907190b115f86"
+    "snapshots/standalone.9-remote-chatgpt-init-prechange/browser-service.mjs": "04ad2c2fe354c61f676844efa593da79a53837e7c067afdd43f907190b115f86",
+    "snapshots/standalone.9-remote-chatgpt-init-prechange/SHA256SUMS": "a335dac593aa78d1ea518b7f91c73685337fe582938e626caaa03862b3027d4b"
   },
   "topLevelFiles": {
     "browser-client.mjs": "cf71c5bf138839ff6f6df07328a63d6897458f122ed68ee0bf496e301cc06c45",

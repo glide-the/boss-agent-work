@@ -2,7 +2,7 @@
 
 发布日期：2026-09-10
 
-插件版本：`26.707.30751-standalone.11`
+插件版本：`26.707.30751-standalone.12`
 
 Chrome 扩展版本：`1.1.5.2`
 
@@ -16,6 +16,7 @@ Chrome 扩展版本：`1.1.5.2`
 
 本版本包含以下相互配合的改动：
 
+- Browser Service 后端发现诊断改回统一的本地遥测空接口，修复 Chrome-only 模式获取 `extension` browser 时因遗留 `zd` 引用产生的 `ReferenceError`。`--probe` 之外新增真实后端发现回归，设计和验证见 [browser-service-undefined-telemetry-design.md](browser-service-undefined-telemetry-design.md)。
 - 个人 Browser Client 不再启动 Statsig、ChatGPT identity 或 Sentry 远程初始化；浏览器连接只建立本地 `boss_browser`、Native Host 和 Chrome Extension 通信。设计和验证见 [browser-remote-initialization-removal-design.md](browser-remote-initialization-removal-design.md)。
 - 个人 Browser Client 恢复对 Chrome Extension void JSON-RPC 响应的基线兼容：当成功响应只含 `jsonrpc` 和匹配 `id` 时，以 `undefined` 结束请求，避免 `nameSession`、导航等已执行操作固定挂起到工具超时。设计和证据见 [browser-void-response-hang-design.md](browser-void-response-hang-design.md)。
 - Browser Client 和源码 Chrome Extension 支持可取消的浏览器操作。DOM snapshot 超时、调用方取消、JavaScript Dialog、标签关闭或浏览器断连时，会清理 pending request 并返回结构化取消原因。
@@ -43,11 +44,11 @@ Chrome 扩展版本：`1.1.5.2`
 
 `make package` 在本地生成以下三个归档。`dist/` 和 `artifacts/` 被 `.gitignore` 排除，归档不会随源码提交进入 Git；发布或拷贝归档时必须同时交付对应的 `.sha256` 文件。
 
-| 档位 | Chrome Extension 来源 | Native Host 来源 | 用途 | 2026-09-07 SHA-256 |
+| 档位 | Chrome Extension 来源 | Native Host 来源 | 用途 | 2026-09-10 SHA-256 |
 | --- | --- | --- | --- | --- |
-| `baseline` | `baselines/chrome-extension` | `baselines/native-host/macos/arm64/extension-host` | 推荐安装和签名基线回归 | `aec5eca2b66c986af71743aac374a858ce9ab7b6eb427f5da3efe5ef8a1564ef` |
-| `extension-dev` | `dist/chrome-extension`，由 TypeScript/React 源码构建 | 签名基线 Host | 验证本版本 Dialog/取消协议和扩展改动 | `adeb377912188e4221b66ec6ff2ba086f1d9fb91b9d11dbc500e077302967ede` |
-| `full-reconstructed` | `dist/chrome-extension` | `dist/native-host/macos/arm64/extension-host`，由 Rust 源码构建 | 协议研究和源码重建验证 | `28fa857f4c710ae64ba6963d68cca90d0725d424c8f6966aebca493d8ef2006c` |
+| `baseline` | `baselines/chrome-extension` | `baselines/native-host/macos/arm64/extension-host` | 推荐安装和签名基线回归 | `b36cdb4991b882fba8b1f6eb05df8d963b98e53c4144c95f0f076610eab039f5` |
+| `extension-dev` | `dist/chrome-extension`，由 TypeScript/React 源码构建 | 签名基线 Host | 验证本版本 Dialog/取消协议和扩展改动 | `1f687939dbf833f2b23b7f33ba96cb1ff28e9d059154091dbd49a399b34ba208` |
+| `full-reconstructed` | `dist/chrome-extension` | `dist/native-host/macos/arm64/extension-host`，由 Rust 源码构建 | 协议研究和源码重建验证 | `52ca55e9927e9826e63919d98243a0d2779fcc2a58ef1a24f9fe8ff84ef28db2` |
 
 表中摘要对应本次最终打包的具体文件。当前归档脚本会保留构建物元数据，重新构建可能产生新的归档摘要；交付时应以同批次生成的 `.sha256` sidecar 为准，不能把表中值当作版本的永久身份。
 
@@ -71,13 +72,13 @@ electron-app/    Electron Main 生命周期模块与手动 reconcile/rollback CL
 | Rust 重建 Host | `components/native-host/` | `dist/native-host/macos/arm64/extension-host` |
 | 签名基线 Host | `baselines/native-host/macos/arm64/extension-host` | 原样进入 `baseline` 和 `extension-dev` |
 
-`components/codex-plugin/scripts-bak/` 保存原始恢复基线和本轮生成物修改前的唯一快照，不是当前权威源码。发布组装会排除插件的 `scripts-bak/`、`src/` 和 `test/`；安装包只保留运行时脚本、必要依赖、扩展、Host、技能、配置和用户文档，不公开开发依赖、测试夹具或恢复基线。当前清单摘要是 `963621722890dc140f30d6657e2a1443164f0b9900fd97d3ec68cfe4d7268fa9`（352 个文件）。
+`components/codex-plugin/scripts-bak/` 保存原始恢复基线和每轮生成物修改前的唯一快照，不是当前权威源码。发布组装会排除插件的 `scripts-bak/`、`src/` 和 `test/`；安装包只保留运行时脚本、必要依赖、扩展、Host、技能、配置和用户文档，不公开开发依赖、测试夹具或恢复基线。当前清单摘要是 `9f884c8b280281b772aef53a2507d15ce07a328eae90a82911ad749584a7ee0f`（356 个文件）。
 
 当前个人运行时文件摘要：
 
 ```text
-browser-client.mjs          cc0fbf13a1ab7e71d70150ea01effec7f594a28ba0426f890c2d30cfc9ce4e12
-browser-service.mjs         3b270aa1dd0705d0c09c719e196a61c110e034db055e5dc4d823183a2ae68aaa
+browser-client.mjs          a7f8c17e765b81ea3320a79282fdb42a9d76eb7f5f8fc22dea2b410893d2f467
+browser-service.mjs         e97ea7679e07f8340d9715e7fb517febbb2c828f93e0855acf94ae99e35049e4
 launch-browser-service.mjs  0c6a9d6ed3072a489e068b7279a4427bcc87a19a54d7474ae380bbc286fd56ca
 ```
 
