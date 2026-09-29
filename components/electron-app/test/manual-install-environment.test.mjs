@@ -56,3 +56,32 @@ test("manual installer dry-run plan validates an isolated installed plugin and R
   assert.deepEqual(plan.missing, []);
   assert.equal(plan.runtimePaths.codexCliPath, path.join(resourcesPath, "codex"));
 });
+
+test("manual installer prefers the current plugin appserver Codex CLI layout", async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "boss-manual-current-cli-"));
+  t.after(async () => await fs.rm(root, { recursive: true, force: true }));
+  const codexHome = path.join(root, "codex-home");
+  const resourcesPath = path.join(root, "resources");
+  const currentCli = path.join(
+    codexHome,
+    "plugins",
+    ".plugin-appserver",
+    "codex-cli",
+    "bin",
+    "codex",
+  );
+  const legacyCli = path.join(codexHome, "plugins", ".plugin-appserver", "codex");
+  for (const filePath of [currentCli, legacyCli, path.join(resourcesPath, "codex")]) {
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, "fixture");
+  }
+
+  const plan = await resolveManualInstallPlan({
+    codexHome,
+    homeDirectory: root,
+    resourcesPath,
+    versionRoot: path.join(root, "missing-plugin"),
+  });
+
+  assert.equal(plan.runtimePaths.codexCliPath, currentCli);
+});

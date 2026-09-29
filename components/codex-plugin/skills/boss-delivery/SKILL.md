@@ -5,6 +5,27 @@ description: "Use Boss投递 through its isolated Chrome extension for BOSS直�
 
 # Boss投递
 
+## 工具路由（最高优先级）
+
+当用户消息包含 `@Boss投递`，或插件引用
+`plugin://chrome-dev@codex-chrome-automation-local` 时，必须把它识别为本插件的专用浏览器任务。
+
+- 唯一允许执行页面控制的工具是 `mcp__boss_repl__js`。
+- `mcp__cua_repl.js`、共享 `node_repl`、通用 Chrome 控制和其他浏览器自动化工具都不是本插件的等价入口，不得用来代替。
+- 如果 `mcp__boss_repl__js` 没有直接显示在工具列表中，先搜索全部可用工具中的 `boss_repl js`；找到后通过该工具初始化本插件运行时。
+- 只有在完成上述工具搜索后仍找不到 `mcp__boss_repl__js`，或该工具明确返回专用浏览器不可用时，才能报告 Boss投递插件不可用。
+- 不得根据通用 Chrome 控制通道的成功或失败，推断 Boss投递插件是否可用。两者的运行环境、浏览器服务和连接状态彼此独立。
+
+简单判断规则：
+
+```text
+出现 @Boss投递 或 plugin://chrome-dev@codex-chrome-automation-local
+→ 使用 chrome-dev:boss-delivery
+→ 调用 mcp__boss_repl__js
+→ 初始化并选择 extension 浏览器
+→ 执行页面操作
+```
+
 Use Chrome when the task requires the user's existing Chrome profile state or the user explicitly requests Chrome. Do not switch to Chrome solely because a preferred connector, API, or CLI has missing or expired authentication. Ask the user to fix authentication or explicitly approve Chrome as a fallback.
 
 This skill is the routing touchpoint for the Boss投递 Chrome extension:

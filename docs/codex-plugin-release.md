@@ -2,7 +2,7 @@
 
 发布日期：2026-09-10
 
-插件版本：`26.707.30751-standalone.12`
+插件版本：`26.707.30751-standalone.13`
 
 Chrome 扩展版本：`1.1.5.2`
 
@@ -16,6 +16,8 @@ Chrome 扩展版本：`1.1.5.2`
 
 本版本包含以下相互配合的改动：
 
+- `Boss投递` 技能把 `@Boss投递` 和插件 URI 明确路由到私有工具 `mcp__boss_repl__js`；在报告插件不可用前必须先完成 `boss_repl js` 工具发现，并且不能用通用 Chrome、共享 `node_repl` 或 `cua_repl` 的状态代替本插件检查。
+- 初始化器优先识别 Codex 0.158 的 `plugins/.plugin-appserver/codex-cli/bin/codex` 布局，同时兼容旧的 `.plugin-appserver/codex` 和 Desktop bundled CLI。
 - Browser Service 后端发现诊断改回统一的本地遥测空接口，修复 Chrome-only 模式获取 `extension` browser 时因遗留 `zd` 引用产生的 `ReferenceError`。`--probe` 之外新增真实后端发现回归，设计和验证见 [browser-service-undefined-telemetry-design.md](browser-service-undefined-telemetry-design.md)。
 - 个人 Browser Client 不再启动 Statsig、ChatGPT identity 或 Sentry 远程初始化；浏览器连接只建立本地 `boss_browser`、Native Host 和 Chrome Extension 通信。设计和验证见 [browser-remote-initialization-removal-design.md](browser-remote-initialization-removal-design.md)。
 - 个人 Browser Client 恢复对 Chrome Extension void JSON-RPC 响应的基线兼容：当成功响应只含 `jsonrpc` 和匹配 `id` 时，以 `undefined` 结束请求，避免 `nameSession`、导航等已执行操作固定挂起到工具超时。设计和证据见 [browser-void-response-hang-design.md](browser-void-response-hang-design.md)。
@@ -46,9 +48,9 @@ Chrome 扩展版本：`1.1.5.2`
 
 | 档位 | Chrome Extension 来源 | Native Host 来源 | 用途 | 2026-09-10 SHA-256 |
 | --- | --- | --- | --- | --- |
-| `baseline` | `baselines/chrome-extension` | `baselines/native-host/macos/arm64/extension-host` | 推荐安装和签名基线回归 | `b36cdb4991b882fba8b1f6eb05df8d963b98e53c4144c95f0f076610eab039f5` |
-| `extension-dev` | `dist/chrome-extension`，由 TypeScript/React 源码构建 | 签名基线 Host | 验证本版本 Dialog/取消协议和扩展改动 | `1f687939dbf833f2b23b7f33ba96cb1ff28e9d059154091dbd49a399b34ba208` |
-| `full-reconstructed` | `dist/chrome-extension` | `dist/native-host/macos/arm64/extension-host`，由 Rust 源码构建 | 协议研究和源码重建验证 | `52ca55e9927e9826e63919d98243a0d2779fcc2a58ef1a24f9fe8ff84ef28db2` |
+| `baseline` | `baselines/chrome-extension` | `baselines/native-host/macos/arm64/extension-host` | 推荐安装和签名基线回归 | `ce5dc9079a0c79f9b68eaa01427da24ce18f7dba0c10f1c8e775345f235a3d36` |
+| `extension-dev` | `dist/chrome-extension`，由 TypeScript/React 源码构建 | 签名基线 Host | 验证本版本 Dialog/取消协议和扩展改动 | `393d406cbddeceab5c7fc0f03e1e7f5406ebb46336058630ab69d24fce63947b` |
+| `full-reconstructed` | `dist/chrome-extension` | `dist/native-host/macos/arm64/extension-host`，由 Rust 源码构建 | 协议研究和源码重建验证 | `035dfc6184965cf4bb91a83fd879f11a07886fd9555482461d8b2f17054478ba` |
 
 表中摘要对应本次最终打包的具体文件。当前归档脚本会保留构建物元数据，重新构建可能产生新的归档摘要；交付时应以同批次生成的 `.sha256` sidecar 为准，不能把表中值当作版本的永久身份。
 
@@ -128,7 +130,7 @@ make verify
 
 BOSS_WORKSPACE="$PWD"
 CODEX_DATA_DIR="${CODEX_HOME:-$HOME/.codex}"
-CODEX_CLI_BIN="$CODEX_DATA_DIR/plugins/.plugin-appserver/codex"
+CODEX_CLI_BIN="$CODEX_DATA_DIR/plugins/.plugin-appserver/codex-cli/bin/codex"
 
 test -x "$CODEX_CLI_BIN"
 "$CODEX_CLI_BIN" plugin marketplace add \
@@ -168,7 +170,7 @@ make baseline
 make verify
 
 CODEX_DATA_DIR="${CODEX_HOME:-$HOME/.codex}"
-CODEX_CLI_BIN="$CODEX_DATA_DIR/plugins/.plugin-appserver/codex"
+CODEX_CLI_BIN="$CODEX_DATA_DIR/plugins/.plugin-appserver/codex-cli/bin/codex"
 "$CODEX_CLI_BIN" plugin add chrome-dev@codex-chrome-automation-local --json
 bun components/electron-app/bin/reconcile-native-host.mjs --dry-run --json
 bun components/electron-app/bin/reconcile-native-host.mjs --json
@@ -251,7 +253,7 @@ bun components/electron-app/bin/rollback-native-host.mjs \
 
 ```bash
 CODEX_DATA_DIR="${CODEX_HOME:-$HOME/.codex}"
-"$CODEX_DATA_DIR/plugins/.plugin-appserver/codex" plugin remove \
+"$CODEX_DATA_DIR/plugins/.plugin-appserver/codex-cli/bin/codex" plugin remove \
   chrome-dev@codex-chrome-automation-local --json
 ```
 
