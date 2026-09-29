@@ -328,10 +328,10 @@ async function assertCliEqual(
   environment: NodeJS.ProcessEnv,
 ): Promise<void> {
   const [baseline, candidate] = await Promise.all([
-    run(["node", path.join(baselineRoot, name), ...arguments_], {
+    run(["node", "--no-warnings", path.join(baselineRoot, name), ...arguments_], {
       env: { ...process.env, ...environment },
     }),
-    run(["node", path.join(candidateRoot, name), ...arguments_], {
+    run(["node", "--no-warnings", path.join(candidateRoot, name), ...arguments_], {
       env: { ...process.env, ...environment },
     }),
   ]);

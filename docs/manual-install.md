@@ -288,7 +288,7 @@ dist/baseline/electron-app/    Electron Main 集成和手动 reconcile CLI
 ```bash
 BOSS_WORKSPACE="/Users/dmeck/project/boss-agent-work/develop"
 CODEX_DATA_DIR="${CODEX_HOME:-/Users/dmeck/.codex}"
-CODEX_CLI_BIN="$CODEX_DATA_DIR/plugins/.plugin-appserver/codex"
+CODEX_CLI_BIN="$CODEX_DATA_DIR/plugins/.plugin-appserver/codex-cli/bin/codex"
 
 test -x "$CODEX_CLI_BIN"
 
@@ -300,7 +300,7 @@ test -x "$CODEX_CLI_BIN"
 
 ```text
 pluginId: chrome-dev@codex-chrome-automation-local
-version: 26.707.30751-standalone.12
+version: 26.707.30751-standalone.13
 ```
 
 Codex CLI 负责安装插件并更新启用记录，不负责本项目的 Native Host 注册。若正在运行的 Electron 宿主尚未接入本项目的 `onDidInstall` lifecycle，还需要执行下一步。
@@ -397,6 +397,8 @@ cargo --version
 
 ## 五、Runtime 路径无法自动识别时
 
+初始化器会依次检查当前 `plugins/.plugin-appserver/codex-cli/bin/codex`、旧版 `.plugin-appserver/codex` 和 Desktop Resources 内的 Codex CLI。只有这些候选都不存在时才需要显式传入 `--codex-cli`。
+
 ### ChatGPT.app 当前布局
 
 ```bash
@@ -405,7 +407,7 @@ BOSS_WORKSPACE="/Users/dmeck/project/boss-agent-work/develop"
 bun "$BOSS_WORKSPACE/components/electron-app/bin/reconcile-native-host.mjs" \
   --codex-home "/Users/dmeck/.codex" \
   --resources-path "/Applications/ChatGPT.app/Contents/Resources" \
-  --codex-cli "/Users/dmeck/.codex/plugins/.plugin-appserver/codex" \
+  --codex-cli "/Users/dmeck/.codex/plugins/.plugin-appserver/codex-cli/bin/codex" \
   --node "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node" \
   --node-repl "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl" \
   --json
@@ -481,7 +483,7 @@ make verify
 
 BOSS_WORKSPACE="/Users/dmeck/project/boss-agent-work/develop"
 CODEX_DATA_DIR="${CODEX_HOME:-/Users/dmeck/.codex}"
-CODEX_CLI_BIN="$CODEX_DATA_DIR/plugins/.plugin-appserver/codex"
+CODEX_CLI_BIN="$CODEX_DATA_DIR/plugins/.plugin-appserver/codex-cli/bin/codex"
 
 "$CODEX_CLI_BIN" plugin add chrome-dev@codex-chrome-automation-local --json
 bun "$BOSS_WORKSPACE/components/electron-app/bin/reconcile-native-host.mjs" --json
@@ -501,7 +503,7 @@ pkill -f '/codex-chrome-automation-local/chrome-dev/.*/extension-host' || true
 
 ```bash
 CODEX_DATA_DIR="${CODEX_HOME:-/Users/dmeck/.codex}"
-CODEX_CLI_BIN="$CODEX_DATA_DIR/plugins/.plugin-appserver/codex"
+CODEX_CLI_BIN="$CODEX_DATA_DIR/plugins/.plugin-appserver/codex-cli/bin/codex"
 
 "$CODEX_CLI_BIN" plugin remove chrome-dev@codex-chrome-automation-local --json
 ```

@@ -55,7 +55,9 @@ function firstExisting(candidates) {
 function runtimeCandidates(resourcesPath, codexHome) {
   return {
     codexCliPath: [
+      path.join(codexHome, "plugins", ".plugin-appserver", "codex-cli", "bin", "codex"),
       path.join(codexHome, "plugins", ".plugin-appserver", "codex"),
+      path.join(resourcesPath, "codex-cli", "bin", "codex"),
       path.join(resourcesPath, "codex"),
     ],
     nodePath: [
